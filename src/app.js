@@ -1,13 +1,13 @@
-import { ABROAD, CANDIDATE_COLORS, CHEER, ELECTION, MUNICIPAL_REFRESH_MS, PRESIDENT, REFRESH_MS, STATES, TSE_BASE } from './config.js?v=15';
-import { LivePage } from './live-page.js?v=15';
-import { LeadCheer } from './cheer.js?v=15';
-import { Forecast } from './forecast.js?v=15';
-import { ForecastView } from './forecast-view.js?v=15';
-import { ChoroplethMap } from './map.js?v=15';
-import { MunicipalFeed } from './municipal-feed.js?v=15';
-import { RunoffPalette } from './palette.js?v=15';
-import { Tally, TseClient } from './tse.js?v=15';
-import { HeadToHead, StateTable, describeTally, formatInt, renderLegend } from './views.js?v=15';
+import { ABROAD, CANDIDATE_COLORS, CHEER, ELECTION, MUNICIPAL_REFRESH_MS, PRESIDENT, REFRESH_MS, STATES, TSE_BASE } from './config.js?v=16';
+import { LivePage } from './live-page.js?v=16';
+import { LeadCheer } from './cheer.js?v=16';
+import { Forecast } from './forecast.js?v=16';
+import { ForecastView } from './forecast-view.js?v=16';
+import { ChoroplethMap } from './map.js?v=16';
+import { MunicipalFeed } from './municipal-feed.js?v=16';
+import { RunoffPalette } from './palette.js?v=16';
+import { Tally, TseClient } from './tse.js?v=16';
+import { HeadToHead, StateTable, describeTally, formatInt, renderLegend } from './views.js?v=16';
 
 const $ = id => document.getElementById(id);
 const AREAS = { ...STATES, ...ABROAD };

@@ -101,7 +101,23 @@ def add_features(snap):
     for k in SHRINK_GRID:
         snap[f"base_shrink_{k}"] = snap.q + shrunk_swing(snap, k)
     snap["base_knn"] = snap.q + neighbour_swing(snap)
+    capital = snap.electorate.to_numpy() == snap.groupby("uf").electorate.transform("max").to_numpy()
+    snap["base_capital"] = snap.q + group_swing(snap, capital.astype(int))
+    cuts = np.quantile(snap.q, [1 / 3, 2 / 3])
+    snap["base_lean"] = snap.q + group_swing(snap, np.digitize(snap.q, cuts))
     return snap
+
+
+def group_swing(snap, group):
+    """Swing computed separately for each (state, group) once the group has 1% of its electorate counted;
+    before that, the group takes its state's swing (or the nation's, as in the base)."""
+    votes = (snap.lc + snap.rc).to_numpy()
+    gap = (snap.lc - snap.q * (snap.lc + snap.rc)).to_numpy()
+    d = pd.DataFrame({"uf": snap.uf.to_numpy(), "g": group, "v": votes, "gap": gap, "ec": snap.ec.to_numpy(), "e": snap.electorate.to_numpy()})
+    sums = d.groupby(["uf", "g"])[["v", "gap", "ec", "e"]].transform("sum")
+    own = np.where(sums.v > 0, sums.gap / sums.v.where(sums.v > 0, 1), 0)
+    fallback = (snap.base - snap.q).to_numpy()
+    return np.where(sums.ec / sums.e >= STATE_SWING_FROM, own, fallback)
 
 
 SHRINK_GRID = (20000, 200000)  # counted two-party votes at which a state (or region) gets half the weight of the level above

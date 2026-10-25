@@ -138,6 +138,8 @@ def replay(e: Election, left, right, speed, rank, moments=MOMENTS, correct=None,
                     "forecast_clip": national(snap, snap.base.clip(0, 1)),
                     **{f"forecast_shrink_{k}": national(snap, snap[f"base_shrink_{k}"]) for k in SHRINK_GRID},
                     "forecast_knn": national(snap, snap.base_knn),
+                    "forecast_capital": national(snap, snap.base_capital),
+                    "forecast_lean": national(snap, snap.base_lean),
                     **{f"forecast_mix_{m}": national(snap, guess, m) for m in MIX_GRID},
                     "partial": snap.lc.sum() / max(snap.lc.sum() + snap.rc.sum(), 1),
                     # how much of what is left sits in states that have barely reported
