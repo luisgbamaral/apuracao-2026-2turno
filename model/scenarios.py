@@ -123,6 +123,7 @@ def replay(e: Election, left, right, speed, rank, moments=MOMENTS, correct=None,
         snap["frac"] = np.bincount(e.unit_of, weights=counted, minlength=len(units)) / units.n
         snap = add_features(snap)
         guess = snap.base if correct is None else snap.base + correct(snap)
+        capital = (snap.electorate == snap.groupby("uf").electorate.transform("max")).to_numpy()
         remaining = snap.electorate - snap.ec
         total = expected_totals(snap)
         rest = (total - snap.lc - snap.rc).clip(lower=0) / total.sum()  # each unit's expected remaining votes, share of all
@@ -139,7 +140,12 @@ def replay(e: Election, left, right, speed, rank, moments=MOMENTS, correct=None,
                     **{f"forecast_shrink_{k}": national(snap, snap[f"base_shrink_{k}"]) for k in SHRINK_GRID},
                     "forecast_knn": national(snap, snap.base_knn),
                     "forecast_capital": national(snap, snap.base_capital),
+                    # Hybrids: the capital of each state with another method, the rest with the page's base.
+                    **{f"forecast_hyb_{m}": national(snap, np.where(capital, snap[f"base_{m}"], snap.base))
+                       for m in ("capital", "lean", "reg", "logit", "knn")},
                     "forecast_lean": national(snap, snap.base_lean),
+                    "forecast_abst": national(snap, snap.base_abst),
+                    "forecast_turnout_state": national(snap, snap.base, by_state=True),
                     **{f"forecast_mix_{m}": national(snap, guess, m) for m in MIX_GRID},
                     "partial": snap.lc.sum() / max(snap.lc.sum() + snap.rc.sum(), 1),
                     # how much of what is left sits in states that have barely reported

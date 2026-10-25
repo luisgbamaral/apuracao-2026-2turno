@@ -24,7 +24,8 @@ N = int(sys.argv[1]) if len(sys.argv) > 1 else 40
 MOMENTS = [0.01, 0.02, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95]
 CANDIDATES = {"página (pontos, média do estado)": "forecast", "logit": "forecast_logit", "encolhido 20 mil": "forecast_shrink_20000",
               "encolhido 200 mil": "forecast_shrink_200000", "vizinhos (15)": "forecast_knn", "regressão": "forecast_reg",
-              "capital x interior": "forecast_capital", "faixas de perfil (1º turno)": "forecast_lean"}
+              "capital x interior": "forecast_capital", "faixas de perfil (1º turno)": "forecast_lean",
+              "faixas de abstenção": "forecast_abst", "participação por estado": "forecast_turnout_state"}
 
 
 def real_times(e, year):

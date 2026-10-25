@@ -105,6 +105,9 @@ def add_features(snap):
     snap["base_capital"] = snap.q + group_swing(snap, capital.astype(int))
     cuts = np.quantile(snap.q, [1 / 3, 2 / 3])
     snap["base_lean"] = snap.q + group_swing(snap, np.digitize(snap.q, cuts))
+    # Voters with no valid first-round vote (absent, blank or null): the pool the runoff draws new votes from.
+    pool = 1 - snap.rate_prior.clip(0, 1)
+    snap["base_abst"] = snap.q + group_swing(snap, np.digitize(pool, np.quantile(pool, [1 / 3, 2 / 3])))
     return snap
 
 
@@ -250,23 +253,26 @@ def weight(snap, mix=None):
     return snap.frac * 0 if np.isinf(mix) else snap.frac / (snap.frac + mix)
 
 
-def expected_totals(snap, mix=None):
+def expected_totals(snap, mix=None, by_state=False):
     """Two-party votes each unit will have at the end: the counted ones plus its uncounted electorate times a
     rate that blends the unit's own votes per elector with its prior rate scaled by the ratio seen so far."""
     votes_c = snap.lc + snap.rc
     counted = snap.frac > 0
     ratio = votes_c[counted].sum() / (snap.ec[counted] * snap.rate_prior[counted]).sum() if counted.any() else 0.97
+    if by_state:  # turnout change against the first round, state by state (national while the state has none counted)
+        g = pd.DataFrame({"uf": snap.uf, "v": votes_c.where(counted, 0), "x": (snap.ec * snap.rate_prior).where(counted, 0)}).groupby("uf").sum()
+        ratio = snap.uf.map((g.v / g.x).where(g.x > 0)).fillna(ratio).to_numpy()
     own = (votes_c / snap.ec.where(snap.ec > 0)).fillna(0)
     w = weight(snap, mix)
     rate = w * own + (1 - w) * snap.rate_prior * ratio
     return votes_c + (snap.electorate - snap.ec).clip(lower=0) * rate
 
 
-def national(snap, base_share, mix=None):
+def national(snap, base_share, mix=None, by_state=False):
     """National two-party share expected at the end: what is counted, plus each unit's remaining votes at a
     share that blends its own partial count with its base."""
     votes_c = snap.lc + snap.rc
-    total = expected_totals(snap, mix)
+    total = expected_totals(snap, mix, by_state)
     w = weight(snap, mix)
     partial = (snap.lc / votes_c.where(votes_c > 0)).fillna(0)
     rest_share = w * partial + (1 - w) * base_share
