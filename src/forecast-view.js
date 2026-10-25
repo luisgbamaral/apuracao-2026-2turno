@@ -1,4 +1,4 @@
-import { esc } from './views.js?v=19';
+import { esc } from './views.js?v=20';
 
 const pct = (x, digits = 1) => (100 * x).toLocaleString('pt-BR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 // A chance is shown between 1% and 99%: beyond that the model's own uncertainty about itself dominates.
@@ -64,7 +64,8 @@ export class ForecastView {
     if (decided) return '';
     const [at, hit] = HITS.findLast(([m]) => m <= counted) ?? HITS[0];
     const done = counted < 0.001 ? 'menos de 0,1%' : `${pct(counted)}%`;
-    return `<span class="sub caveat"><b>Quanto confiar agora:</b> com ${done} apurado, ainda é cedo. ` +
+    const stage = counted < 0.1 ? 'ainda é cedo' : counted < 0.5 ? 'a previsão ainda pode mudar' : 'a previsão já está mais firme';
+    return `<span class="sub caveat"><b>Quanto confiar agora:</b> com ${done} apurado, ${stage}. ` +
       `Nas 500 eleições simuladas, com ${pct(at, 0)}% apurado, o favorito do modelo venceu em ${hit}% delas ` +
       '(metade foi decidida por menos de 2 pontos).</span>';
   }
