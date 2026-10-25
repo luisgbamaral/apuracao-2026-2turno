@@ -10,11 +10,11 @@ import json
 import subprocess
 import sys
 import time
-import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pandas as pd
+import requests
 import truststore
 
 truststore.inject_into_ssl()
@@ -25,15 +25,17 @@ BASE = "https://resultados.tse.jus.br/oficial/ele2026/6258/dados"
 LEFT, RIGHT = "13", "22"
 EVERY, PUSH_EVERY, RECHECK = 60, 120, 300  # seconds: forecast, push, re-read a state's municipalities anyway
 WORKTREE = Path(sys.argv[1])
+SESSION = requests.Session()  # kept-alive connections: a TLS handshake per file times out when the TSE is busy
+SESSION.mount("https://", requests.adapters.HTTPAdapter(pool_connections=4, pool_maxsize=32))
 OUT = WORKTREE / "history.json"
 
 
 def tally(uf, mun=""):
     """Two-party votes and progress of one TSE file, or None if it could not be read."""
     try:
-        request = urllib.request.Request(f"{BASE}/{uf}/{uf}{mun}-c0001-e006258-u.json", headers={"Cache-Control": "no-cache"})
-        with urllib.request.urlopen(request, timeout=20) as r:
-            j = json.load(r)
+        r = SESSION.get(f"{BASE}/{uf}/{uf}{mun}-c0001-e006258-u.json", headers={"Cache-Control": "no-cache"}, timeout=15)
+        r.raise_for_status()
+        j = r.json()
     except Exception as error:  # noqa: BLE001 - keep the last good file, as the page does
         print("unavailable", uf, mun, error, flush=True)
         return None

@@ -1,5 +1,5 @@
-import { CHEER, HISTORY_URL } from './config.js?v=25';
-import { esc } from './views.js?v=25';
+import { CHEER, HISTORY_URL } from './config.js?v=26';
+import { esc } from './views.js?v=26';
 
 const pct = (x, digits = 1) => (100 * x).toLocaleString('pt-BR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 // A chance is shown between 1% and 99%: beyond that the model's own uncertainty about itself dominates.
@@ -66,6 +66,10 @@ export class ForecastView {
       </div>`).join('');
     this.note.textContent = `Previsão com ${pct(result.counted)}% do eleitorado nas seções totalizadas. ` +
       'O gráfico mostra a noite inteira, o mesmo para todos os visitantes.';
+    if (!own) {
+      const hour = new Date(result.at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+      this.note.textContent += ` Mostrando a última previsão disponível, das ${hour}, enquanto esta página calcula a de agora.`;
+    }
     this.#drawChart(left, right);
   }
 
@@ -86,7 +90,8 @@ export class ForecastView {
     const last = this.history.at(-1);
     const same = last && last.counted === result.counted && Math.abs(last.share - result.share) < 1e-6;
     if (same && Date.now() - last.at < 55_000) return; // at most one unchanged point a minute
-    this.history.push({ at: Date.now(), counted: result.counted, share: result.share, chance: result.chance });
+    const { counted, share, low, high, chance } = result;
+    this.history.push({ at: Date.now(), counted, share, low, high, chance });
     this.history = this.history.slice(-2000);
     try {
       localStorage.setItem(ForecastView.STORAGE_KEY, JSON.stringify(this.history));
@@ -105,9 +110,10 @@ export class ForecastView {
 
   /** Until this page computes its own forecast, the latest published one is shown, with the chart. */
   showLatest(left, right) {
-    this.candidates ??= [left, right];
-    const last = this.shared.at(-1);
-    if (!this.own && last?.high) this.render({ ...last, decided: 0 }, ...this.candidates, false);
+    if (left && right) this.candidates = [left, right];
+    if (!this.candidates) return;
+    const last = this.#points.findLast(p => p.high); // the latest forecast available, published or seen here
+    if (!this.own && last) this.render({ ...last, decided: 0 }, ...this.candidates, false);
     else this.#drawChart(...this.candidates);
   }
 
