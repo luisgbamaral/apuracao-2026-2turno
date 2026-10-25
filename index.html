@@ -3,35 +3,39 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Apuração em tempo real das Eleições 2026: presidente por estado e Pernambuco, direto dos dados do TSE.">
-  <title>Apuração 2026 ao vivo</title>
-  <link rel="stylesheet" href="styles.css?v=7">
-  <script type="module" src="src/app.js?v=7"></script>
+  <meta name="description" content="Apuração em tempo real do 2º turno presidencial de 2026: Brasil, estados e municípios, direto dos dados do TSE.">
+  <title>Apuração 2026 · 2º turno ao vivo</title>
+  <link rel="stylesheet" href="styles.css?v=1">
+  <script type="module" src="src/app.js?v=1"></script>
 </head>
 <body>
-  <nav>
-    <a href="index.html" aria-current="page">Apuração</a>
-    <a href="eleitos.html?cargo=governador">Governadores</a>
-    <a href="eleitos.html?cargo=senador">Senadores</a>
-    <a href="eleitos.html?cargo=deputado-federal">Deputados federais</a>
-  </nav>
   <header>
-    <h1>Apuração 2026 · 1º turno</h1>
+    <h1>Apuração 2026 · 2º turno</h1>
     <span id="status" class="sub">Carregando…</span>
   </header>
 
+  <section id="duel" class="card">
+    <h2>Presidente · Brasil</h2>
+    <p class="sub"></p>
+    <div class="duel"></div>
+    <div id="tiles" class="tiles"></div>
+  </section>
+
   <div class="grid two">
     <section class="card">
-      <h2>Quem lidera para presidente em cada estado</h2>
-      <p class="sub">Passe o mouse sobre um estado para ver o detalhe.</p>
-      <div id="legend" class="legend"></div>
-      <svg id="map" viewBox="0 0 380 392" role="img" aria-label="Mapa do Brasil colorido pelo candidato a presidente que lidera em cada estado"></svg>
+      <h2>Quem vence em cada estado</h2>
+      <p class="sub">Cor de quem lidera; quanto mais forte, maior a vantagem. Passe o mouse ou toque num estado.</p>
+      <div class="legend"></div>
+      <svg id="state-map" class="map states" role="img" aria-label="Mapa do Brasil por estado, colorido pelo candidato que lidera"></svg>
     </section>
-    <section id="national" class="card">
-      <h2>Presidente · Brasil</h2>
-      <p class="sub"></p>
-      <div id="tiles" class="tiles"></div>
-      <div class="ranking"></div>
+    <section class="card">
+      <div class="title-row">
+        <h2>Quem vence em cada município</h2>
+        <label class="sub">Ver <select id="zoom" aria-label="Estado a ampliar"></select></label>
+      </div>
+      <p id="municipal-status" class="sub">Os municípios começam a carregar quando o TSE totalizar as primeiras seções.</p>
+      <div class="legend"></div>
+      <svg id="municipal-map" class="map municipalities" role="img" aria-label="Mapa do Brasil por município, colorido pelo candidato que lidera"></svg>
     </section>
   </div>
 
@@ -40,28 +44,10 @@
     <div class="scroll"><table id="state-table"></table></div>
   </section>
 
-  <h2 class="section">Pernambuco</h2>
-  <div class="grid three">
-    <section id="home-president" class="card">
-      <h2>Presidente</h2>
-      <p class="sub"></p>
-      <div class="ranking"></div>
-    </section>
-    <section id="home-governor" class="card">
-      <h2>Governador</h2>
-      <p class="sub"></p>
-      <div class="ranking"></div>
-    </section>
-    <section id="home-senator" class="card">
-      <h2>Senador · 2 vagas</h2>
-      <p class="sub"></p>
-      <div class="ranking"></div>
-    </section>
-  </div>
-
   <footer class="sub">
-    Fonte: <a href="https://resultados.tse.jus.br">Tribunal Superior Eleitoral</a> (arquivos públicos de divulgação) ·
-    malha estadual do IBGE. Resultados parciais até o fim da totalização.
+    Fonte: <a href="https://resultados.tse.jus.br">Tribunal Superior Eleitoral</a> (arquivos públicos de divulgação e fotos dos candidatos) ·
+    malhas do IBGE. Resultados parciais até o fim da totalização. Um município criado depois da malha do IBGE (Boa Esperança do Norte, MT)
+    entra nos totais, mas não aparece no mapa.
   </footer>
   <div id="tooltip" hidden></div>
 </body>

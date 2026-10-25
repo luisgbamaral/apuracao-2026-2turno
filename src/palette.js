@@ -1,72 +1,38 @@
-/** Maps parties to colours: a fixed colour for the largest parties, spare ones for the rest. */
-export class PartyPalette {
-  static OTHER = 'var(--other)';
-  static FIXED = {
-    PT: '#d7263d',
-    PL: '#2a78d6',
-    UNIÃO: '#1baf7a',
-    PP: '#0e7c86',
-    PSD: '#eb6834',
-    MDB: '#008300',
-    REPUBLICANOS: '#6f5fd0',
-    PSB: '#eda100',
-    PDT: '#e87ba4',
-    PSDB: '#8c6d3f',
-    PODE: '#7a9a01',
-    PSOL: '#b04ac2',
-  };
-  static SPARE = [
-    '#5d6d7e', '#c08552', '#3ec1d3', '#a3586a', '#4f7f3a', '#c2a83e', '#7d7fbf', '#d99a7c', '#2f6f73',
-    '#9c6b98', '#6b8e9f', '#b5651d', '#4b9b8f', '#8a8f2a', '#c76f8e', '#3d5a80', '#a08060', '#6a4c93',
-  ];
-
-  #assigned = new Map();
-
-  /** A party keeps its colour for the whole visit, whatever its rank becomes. */
-  colorOf(party) {
-    if (PartyPalette.FIXED[party]) return PartyPalette.FIXED[party];
-    if (!this.#assigned.has(party)) {
-      this.#assigned.set(party, PartyPalette.SPARE[this.#assigned.size] ?? PartyPalette.OTHER);
-    }
-    return this.#assigned.get(party);
-  }
-}
+import { CANDIDATE_COLORS } from './config.js?v=1';
 
 /**
- * Maps presidential candidates to colours. Colour follows the candidate, not the rank:
- * the national leaders seen on the first visit keep their slot for good, so a state
- * never changes colour just because the national order flipped.
+ * Colours of the runoff maps: the hue says who leads an area, the shade how wide the lead is.
+ * Shades mix the candidate colour with the page surface, so they work in light and dark mode.
  */
-export class CandidatePalette {
-  static STORAGE_KEY = 'apuracao2026.slots';
-  static SLOTS = 3; // most hues that stay distinguishable on a choropleth, incl. colour-blind readers
-  static OTHER = 'var(--other)';
+export class RunoffPalette {
   static NONE = 'var(--none)';
-
-  constructor() {
-    this.slots = this.#load();
-  }
-
-  /** Fixes the slots from the national tally, once there are votes to rank. */
-  assign(national) {
-    if (this.slots.length || !national.leader) return;
-    this.slots = national.candidates.slice(0, CandidatePalette.SLOTS).map(c => c.number);
-    try {
-      localStorage.setItem(CandidatePalette.STORAGE_KEY, JSON.stringify(this.slots));
-    } catch { /* storage blocked: slots still hold for this visit */ }
-  }
+  static BANDS = [
+    { below: 5, strength: 40, label: 'até 5 pontos' },
+    { below: 15, strength: 70, label: '5 a 15 pontos' },
+    { below: Infinity, strength: 100, label: 'mais de 15 pontos' },
+  ];
 
   colorOf(candidate) {
-    if (!candidate) return CandidatePalette.NONE;
-    const slot = this.slots.indexOf(candidate.number);
-    return slot < 0 ? CandidatePalette.OTHER : `var(--series-${slot + 1})`;
+    return CANDIDATE_COLORS[candidate?.number] ?? RunoffPalette.NONE;
   }
 
-  #load() {
-    try {
-      return JSON.parse(localStorage.getItem(CandidatePalette.STORAGE_KEY)) ?? [];
-    } catch {
-      return [];
-    }
+  /** Fill of an area: its leader's colour, stronger as the lead widens. */
+  fill(tally) {
+    const leader = tally?.leader;
+    if (!leader) return RunoffPalette.NONE;
+    const { strength } = RunoffPalette.BANDS.find(band => tally.margin < band.below);
+    return RunoffPalette.#shade(this.colorOf(leader), strength);
+  }
+
+  /** Legend rows: one per candidate, one swatch per band. */
+  legend(candidates) {
+    return candidates.map(c => ({
+      name: c.name,
+      swatches: RunoffPalette.BANDS.map(band => ({ color: RunoffPalette.#shade(this.colorOf(c), band.strength), label: band.label })),
+    }));
+  }
+
+  static #shade(color, strength) {
+    return strength === 100 ? color : `color-mix(in srgb, ${color} ${strength}%, var(--surface))`;
   }
 }

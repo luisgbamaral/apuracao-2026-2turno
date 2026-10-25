@@ -1,135 +1,82 @@
-import { STATES } from './config.js?v=7';
-import { CandidatePalette } from './palette.js?v=7';
-
 const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 export const esc = text => String(text).replace(/[&<>"']/g, ch => ESCAPES[ch]);
-const toNumber = pct => parseFloat(pct.replace(',', '.'));
-export const swatch = color => `<i class="swatch" style="background:${color}"></i>`;
-
 export const formatInt = n => n.toLocaleString('pt-BR');
+const formatPoints = n => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const swatch = color => `<i class="swatch" style="background:${color}"></i>`;
 
-/** Every candidate of one race as a ranked bar list. */
-export class RankingList {
-  constructor(card, colorOf) {
+/** The two candidates side by side, with photo, share, votes and one bar split between them. */
+export class HeadToHead {
+  constructor(card, palette) {
     this.summary = card.querySelector('.sub');
-    this.list = card.querySelector('.ranking');
-    this.colorOf = colorOf;
+    this.body = card.querySelector('.duel');
+    this.palette = palette;
   }
 
-  render(tally) {
+  render(tally, candidates) {
     if (!tally) {
-      this.list.innerHTML = '<p class="sub">Sem dados do TSE no momento.</p>';
+      this.body.innerHTML = '<p class="sub">Sem dados do TSE no momento.</p>';
       return;
     }
-    this.summary.textContent =
-      `${tally.sectionsPct}% das seções totalizadas · ${formatInt(tally.validVotes)} votos válidos`;
-    this.list.innerHTML = tally.candidates.map(c => `
-      <div class="row${tally.isLeading(c) ? ' leading' : ''}">
-        <span class="who">${esc(c.name)} <small>${esc(c.party)}</small>${c.note ? `<span class="tag">${esc(c.note)}</span>` : ''}</span>
-        <span class="pct">${c.pct}%</span>
-        <span class="votes">${formatInt(c.votes)}</span>
-        <div class="bar" style="width:${toNumber(c.pct)}%;background:${this.colorOf(c)}"></div>
-      </div>`).join('');
+    const winner = tally.winner;
+    const tag = c => (winner?.number !== c.number ? ''
+      : `<span class="tag">${tally.hasStatuses ? 'Eleito' : 'Matematicamente eleito'}</span>`);
+    const [left, right] = candidates; // ballot order of the TSE file, so nobody swaps sides mid-count
+    const share = c => (tally.validVotes ? (100 * c.votes) / tally.validVotes : 0);
+    this.summary.textContent = tally.leader
+      ? `${tally.leader.name} à frente por ${formatInt(tally.lead)} votos (${formatPoints(tally.margin)} pontos)`
+      : 'Aguardando os primeiros votos totalizados.';
+    this.body.innerHTML = `
+      <div class="pair">${candidates.map(c => `
+        <figure class="candidate${tally.leader?.number === c.number ? ' leading' : ''}" style="--c:${this.palette.colorOf(c)}">
+          <img src="${c.photo}" alt="" loading="lazy" onerror="this.remove()">
+          <figcaption>
+            <span class="name">${esc(c.name)} <small>${esc(c.party)}</small>${tag(c)}</span>
+            <b>${c.pct}%</b>
+            <span class="sub">${formatInt(c.votes)} votos</span>
+          </figcaption>
+        </figure>`).join('')}
+      </div>
+      <div class="split" role="img" aria-label="Divisão dos votos válidos">
+        <span style="width:${share(left)}%;background:${this.palette.colorOf(left)}"></span>
+        <span style="width:${share(right)}%;background:${this.palette.colorOf(right)}"></span>
+        <i class="half" title="50% dos votos válidos"></i>
+      </div>`;
   }
 }
 
-/** Choropleth of Brazil: each state takes the colour of its leading candidate. */
-export class BrazilMap {
-  static SCALE = 10;
-  static ORIGIN = { lon: -74, lat: 5.4 };
-  static LON_SQUEEZE = Math.cos((15 * Math.PI) / 180); // equirectangular, true at Brazil's mid latitude
-
-  constructor({ svg, legend, tooltip }, palette) {
-    this.svg = svg;
-    this.legend = legend;
-    this.tooltip = tooltip;
-    this.palette = palette;
-    this.tallies = {};
-    svg.addEventListener('mousemove', event => this.#showTooltip(event));
-    svg.addEventListener('mouseleave', () => (tooltip.hidden = true));
-  }
-
-  async load(url) {
-    const geojson = await (await fetch(url)).json();
-    const ufByIbge = Object.fromEntries(Object.entries(STATES).map(([uf, s]) => [s.ibge, uf]));
-    const shapes = geojson.features.map(feature => {
-      const { type, coordinates } = feature.geometry;
-      const polygons = (type === 'Polygon' ? [coordinates] : coordinates)
-        .map(polygon => polygon.map(ring => ring.map(BrazilMap.#project)));
-      return { uf: ufByIbge[feature.properties.codarea], polygons };
-    });
-    this.svg.innerHTML =
-      shapes.map(s => `<path data-uf="${s.uf}" d="${BrazilMap.#pathData(s.polygons)}"/>`).join('') +
-      shapes.map(s => {
-        const [x, y] = BrazilMap.#labelPoint(s.polygons);
-        return `<text x="${x}" y="${y}">${s.uf.toUpperCase()}</text>`;
-      }).join('');
-  }
-
-  render(national, tallies) {
-    this.tallies = tallies;
-    for (const path of this.svg.querySelectorAll('path')) {
-      path.style.fill = this.palette.colorOf(tallies[path.dataset.uf]?.leader);
-    }
-    const named = this.palette.slots
-      .map(number => national.candidates.find(c => c.number === number))
-      .filter(Boolean)
-      .map(c => [this.palette.colorOf(c), c.name]);
-    this.legend.innerHTML = [...named, [CandidatePalette.OTHER, 'Outro candidato'], [CandidatePalette.NONE, 'Sem líder definido']]
-      .map(([color, label]) => `<span>${swatch(color)}${esc(label)}</span>`).join('');
-  }
-
-  #showTooltip(event) {
-    const uf = event.target.dataset?.uf;
-    const tally = this.tallies[uf];
-    this.tooltip.hidden = !tally;
-    if (!tally) return;
-    this.tooltip.innerHTML =
-      `<strong>${STATES[uf].name}</strong><span class="sub">${tally.sectionsPct}% das seções</span>` +
-      tally.candidates.slice(0, 4).map(c =>
-        `<div><span>${swatch(this.palette.colorOf(c))}${esc(c.name)}</span><b>${c.pct}%</b></div>`).join('');
-    const { offsetWidth: width, offsetHeight: height } = this.tooltip;
-    this.tooltip.style.left = `${Math.min(event.clientX + 14, innerWidth - width - 8)}px`;
-    this.tooltip.style.top = `${Math.min(event.clientY + 14, innerHeight - height - 8)}px`;
-  }
-
-  static #project([lon, lat]) {
-    const { SCALE, ORIGIN, LON_SQUEEZE } = BrazilMap;
-    return [(lon - ORIGIN.lon) * LON_SQUEEZE * SCALE, (ORIGIN.lat - lat) * SCALE];
-  }
-
-  static #pathData(polygons) {
-    return polygons.flat()
-      .map(ring => `M${ring.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join('L')}Z`)
-      .join('');
-  }
-
-  /** Centre of the bounding box of the largest polygon (the mainland, for states with islands). */
-  static #labelPoint(polygons) {
-    const ring = polygons.map(p => p[0]).reduce((a, b) => (b.length > a.length ? b : a));
-    const mid = values => (Math.min(...values) + Math.max(...values)) / 2;
-    return [mid(ring.map(p => p[0])).toFixed(1), (mid(ring.map(p => p[1])) + 3).toFixed(1)];
-  }
+/** Legend of a runoff map: one row per candidate, one swatch per band of the lead. */
+export function renderLegend(element, rows) {
+  element.innerHTML = rows.map(row =>
+    `<div><span class="who">${esc(row.name)}</span>${row.swatches.map(s => `<span>${swatch(s.color)}${s.label}</span>`).join('')}</div>`).join('') +
+    `<div><span>${swatch('var(--none)')}sem votos ou empate</span></div>`;
 }
 
-/** Table view of the map: leader and runner-up per state. */
+/** Tooltip body for one area. */
+export function describeTally(title, tally, palette) {
+  if (!tally) return `<strong>${esc(title)}</strong><span class="sub">ainda não carregado</span>`;
+  return `<strong>${esc(title)}</strong><span class="sub">${tally.sectionsPct}% das seções totalizadas</span>` +
+    tally.ranked.map(c => `<div><span>${swatch(palette.colorOf(c))}${esc(c.name)}</span><b>${c.pct}%</b></div>`).join('');
+}
+
+/** Table view of the state map, plus the votes cast abroad. */
 export class StateTable {
   constructor(table, palette) {
     this.table = table;
     this.palette = palette;
   }
 
-  render(tallies) {
-    const cells = c => (c
-      ? `<td>${swatch(this.palette.colorOf(c))}${esc(c.name)}</td><td class="num">${c.pct}%</td>`
-      : '<td>–</td><td class="num">–</td>');
-    const rows = Object.entries(STATES).map(([uf, state]) => {
+  render(areas, tallies, candidates) {
+    const head = candidates.map(c => `<th class="num">${swatch(this.palette.colorOf(c))}${esc(c.name)}</th>`).join('');
+    const rows = Object.entries(areas).map(([uf, name]) => {
       const tally = tallies[uf];
-      return `<tr><td>${state.name}</td><td class="num">${tally ? `${tally.sectionsPct}%` : '–'}</td>` +
-        `${cells(tally?.leader)}${cells(tally?.runnerUp)}</tr>`;
+      const pct = c => tally?.candidates.find(x => x.number === c.number)?.pct;
+      const leader = tally?.leader;
+      return `<tr><td>${name}</td><td class="num">${tally ? `${tally.sectionsPct}%` : '–'}</td>` +
+        candidates.map(c => `<td class="num">${pct(c) ? `${pct(c)}%` : '–'}</td>`).join('') +
+        `<td>${leader ? `${swatch(this.palette.colorOf(leader))}${esc(leader.name)} +${formatPoints(tally.margin)}` : '–'}</td></tr>`;
     });
     this.table.innerHTML =
-      '<thead><tr><th>Estado</th><th class="num">Seções</th><th>Líder</th><th class="num">%</th>' +
-      `<th>2º lugar</th><th class="num">%</th></tr></thead><tbody>${rows.join('')}</tbody>`;
+      `<thead><tr><th>Estado</th><th class="num">Seções</th>${head}<th>Vantagem (pontos)</th></tr></thead>` +
+      `<tbody>${rows.join('')}</tbody>`;
   }
 }

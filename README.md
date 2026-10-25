@@ -1,63 +1,58 @@
-# Apuração 2026
+# Apuração 2026 · 2º turno
 
-Live dashboard of the 2026 Brazilian general election count, read straight from the public result files of the Superior Electoral Court (TSE).
+Live dashboard of the 2026 Brazilian presidential runoff, Flávio Bolsonaro against Lula, read straight from the public result files of the Superior Electoral Court (TSE). First round: [apuracao-2026](https://github.com/luisgbamaral/apuracao-2026).
 
-**Live:** https://luisgbamaral.github.io/apuracao-2026/
+**Live:** https://luisgbamaral.github.io/apuracao-2026-2turno/
 
-- Map of Brazil coloured by the presidential candidate leading in each state, with the national count beside it.
-- Table with leader and runner-up per state.
-- Pernambuco in detail: president, governor and senator, every candidate listed.
-- Winners for governor, senator and federal deputy with the share of seats per party: confirmed by the TSE, plus a live preview for senators and deputies that gives way to the official result state by state.
-- Refreshes every 60 seconds, in light or dark mode.
+- The two candidates side by side, with their official TSE photos, share, votes and a bar split at 50%.
+- Map by state and map by municipality (all 5,570): blue where Flávio leads, red where Lula leads, darker as the lead widens. The municipal map zooms into any state.
+- Table with both shares and the lead in every state and abroad.
+- The national count refreshes every 60 seconds; municipalities every 5 minutes. Light or dark mode.
 
 ## How it works
 
-The page is fully static: no build step, no dependencies, no backend. The TSE publishes one JSON file per office and area and allows cross-origin reads, so each visitor's browser fetches the 30 files it needs (Brazil, the 27 states, and Pernambuco's governor and senator races) and redraws the page.
+The page is fully static: no build step, no dependencies, no backend. The TSE publishes one JSON file per area and allows cross-origin reads, so each visitor's browser fetches what it needs: Brazil, the 27 states and abroad every minute, and the 5,570 municipal files (under 1 kB gzipped each) in a background pass that skips municipalities already fully counted.
 
 ```
-index.html          the count: map, national tally, Pernambuco
-eleitos.html        confirmed winners for one office, chosen by ?cargo=
-styles.css          theme tokens and layout
-data/states.geojson state boundaries (IBGE)
-src/config.js       election codes, states, refresh interval
-src/tse.js          TseClient (fetch) and Tally (one office in one area)
-src/palette.js      CandidatePalette (stable colour per candidate)
-src/views.js        BrazilMap, RankingList, StateTable
-src/live-page.js    LivePage (refresh loop shared by both pages)
-src/app.js          Dashboard (the count: index.html)
-src/elected.js      ElectedPage and PartyPie (confirmed winners: eleitos.html?cargo=...)
+index.html                 the page
+styles.css                 theme tokens and layout
+data/states.json           projected state outlines        } built by tools/build_shapes.py
+data/municipalities.json   projected municipal outlines    } from IBGE boundaries and the TSE list
+src/config.js              election code, candidate colours, refresh intervals, states
+src/tse.js                 TseClient (fetch) and Tally (one area)
+src/municipal-feed.js      MunicipalFeed (throttled pass over the municipal files)
+src/palette.js             RunoffPalette (hue by leader, shade by lead)
+src/map.js                 ChoroplethMap (SVG map, tooltip, zoom)
+src/views.js               HeadToHead, StateTable, legend and tooltip
+src/live-page.js           LivePage (refresh loop)
+src/app.js                 Dashboard
 ```
 
 Design notes:
 
-- **Colour follows the candidate, not the rank.** The three national leaders seen on the first visit keep their colour, so a state never repaints because the national order flipped. Three is the most hues that stay distinguishable on a map, including for colour-blind readers; any other candidate leading a state is shown in grey and named in the tooltip and the table.
-- **The map is plain SVG.** State boundaries are projected with an equirectangular projection, so no mapping library is needed.
-- **A seat is decided only when it cannot change.** That is when the TSE publishes an "Eleito" status, when it flags a governor race as mathematically decided, or, for senators, when a candidate stays ahead of the first one outside the seats even if every voter in the uncounted sections chose that rival. The file's `e` flag is not used, because it is also set for candidates going to a runoff.
-- **The preview reuses the TSE's own arithmetic.** For senators it is the most voted candidates of each state. For deputies, each state file already carries the seats each party or federation holds so far (the TSE's partial run of the quotient and remainder rules), so the page only picks the most voted candidates of each group. On finished 2024 council races this rule reproduces the official winners exactly.
-- **A missing file never blanks the page.** Each request fails on its own and the affected panel says so.
+- **Colour follows the candidate.** Blue is Flávio Bolsonaro (22) and red is Lula (13), fixed by ballot number in `src/config.js`. Shades are mixed with the page surface, so they hold in dark mode.
+- **The shade is the lead, in points of the valid votes:** up to 5, 5 to 15, more than 15.
+- **Nobody swaps sides.** The candidates keep the TSE's ballot order on screen whoever leads.
+- **A winner is shown only when the TSE says so:** its "Eleito" status after the count, or its mathematically-decided flag before that, as a neutral tag.
+- **Maps are plain SVG.** `tools/build_shapes.py` projects the IBGE boundaries once (equirectangular, integer units, relative moves), so the browser only sets fills. One municipality created after the IBGE boundaries (Boa Esperança do Norte, MT) counts in every total but has no shape.
+- **A missing file never blanks the page.** Each request fails on its own and keeps the last good count.
 
 ## Run locally
-
-ES modules need an HTTP origin, so serve the folder instead of opening the file:
 
 ```bash
 python -m http.server 8000
 ```
 
-Then open http://localhost:8000.
-
-## Adapting
-
-Election and office codes live in `src/config.js` and come from the TSE's `oficial/comum/config/ele-c.json`. Change `HOME_STATE` to detail another state, or point `ELECTION` at the runoff codes for the second round.
+Then open http://localhost:8000. Before the runoff count starts, `?eleicao=6257` points the page at the first round, to check it against real numbers.
 
 ## Data
 
-Results: [TSE](https://resultados.tse.jus.br). Boundaries: [IBGE](https://servicodados.ibge.gov.br/api/docs/malhas). Counts are partial until the TSE closes the tally. This project is not affiliated with the TSE.
+Results and photos: [TSE](https://resultados.tse.jus.br). Boundaries and names: [IBGE](https://servicodados.ibge.gov.br/api/docs). Counts are partial until the TSE closes the tally. This project is not affiliated with the TSE.
 
 ## Deploying
 
-GitHub Pages caches every file for 10 minutes, so a browser could mix old and new modules right after a deploy. Every stylesheet, script and import therefore carries a `?v=N` query; bump it in one go before publishing:
+GitHub Pages caches every file for 10 minutes, so every stylesheet, script and import carries a `?v=N` query; bump it in one go before publishing:
 
 ```bash
-sed -i -E 's/\?v=[0-9]+/?v=7/' index.html eleitos.html src/*.js
+sed -i -E 's/\?v=[0-9]+/?v=2/' index.html src/*.js
 ```
