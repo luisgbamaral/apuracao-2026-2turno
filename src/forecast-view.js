@@ -1,4 +1,5 @@
-import { esc } from './views.js?v=17';
+import { ABROAD, STATES } from './config.js?v=18';
+import { esc } from './views.js?v=18';
 
 const pct = (x, digits = 1) => (100 * x).toLocaleString('pt-BR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 // A chance is shown between 1% and 99%: beyond that the model's own uncertainty about itself dominates.
@@ -44,6 +45,7 @@ export class ForecastView {
           `alcança os 50%. Chance de ${esc(favourite.c.name)} vencer: ${chanceText(favourite.chance)}</span>`
         : `<span class="sub">Aposta do modelo: ${label}</span><b ${color}>${esc(favourite.c.name)}</b>` +
           `<span class="sub">com ${chanceText(favourite.chance)} de chance de vencer</span>`;
+    this.bet.innerHTML += ForecastView.#caveat(result);
     this.rows.innerHTML = sides.map(s => `
       <div class="chance" style="--c:${this.palette.colorOf(s.c)}">
         <span class="who">${esc(s.c.name)}</span>
@@ -54,6 +56,20 @@ export class ForecastView {
     this.note.textContent = `Previsão com ${pct(result.counted)}% do eleitorado nas seções totalizadas. ` +
       'A série começa quando esta página foi aberta neste navegador.';
     this.#drawChart(left, right);
+  }
+
+  /** How much to trust the forecast at this point of the night, in words, from where the counted votes come from. */
+  static #caveat({ counted, where, decided }) {
+    if (decided || counted >= 0.3) return '';
+    const name = uf => ({ ...STATES, ...ABROAD })[uf] ?? uf.toUpperCase();
+    if (counted < 0.05) {
+      const top = where.slice(0, 3).map(w => `${name(w.uf)} (${pct(w.share, 0)}%)`).join(', ');
+      const done = counted < 0.001 ? 'menos de 0,1%' : `só ${pct(counted)}%`;
+      return `<span class="sub caveat"><b>Ainda é cedo:</b> ${done} do eleitorado foi apurado. Dos votos que já chegaram, a maior parte vem de ${top || 'poucos lugares'}. ` +
+        'A previsão aplica ao país a virada vista nesses lugares e vai mudar bastante quando outros estados chegarem. ' +
+        'Nos testes, com cerca de 1% apurado, o favorito do modelo venceu em 2 de cada 3 eleições.</span>';
+    }
+    return `<span class="sub caveat">${where.length} estados já têm votos apurados; a previsão ainda pode mudar bastante.</span>`;
   }
 
   #remember(result) {
