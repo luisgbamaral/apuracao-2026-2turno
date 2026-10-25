@@ -207,3 +207,4 @@ h3.sub { margin: 14px 0 4px; font-weight: 600; }
   cursor: pointer;
 }
 .tabs button[aria-selected="true"] { background: var(--ink); border-color: var(--ink); color: var(--page); }
+.accuracy-gap { margin-top: 28px; }
