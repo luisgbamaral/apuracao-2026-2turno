@@ -11,7 +11,7 @@ At each moment the page's forecast (base, plus the model if given) is compared w
 import numpy as np
 import pandas as pd
 
-from simulate import REGIONS, add_features, expected_totals, load, national, priors
+from simulate import REGIONS, SHRINK_GRID, add_features, expected_totals, load, national, priors
 
 REGION = {**dict.fromkeys(["ac", "am", "ap", "pa", "ro", "rr", "to"], 0), **dict.fromkeys(["al", "ba", "ce", "ma", "pb", "pe", "pi", "rn", "se"], 1),
           **dict.fromkeys(["df", "go", "ms", "mt"], 2), **dict.fromkeys(["es", "mg", "rj", "sp"], 3), **dict.fromkeys(["pr", "rs", "sc"], 4), "zz": 5}
@@ -32,6 +32,7 @@ class Election:
         for column in ("q", "others", "rate_prior"):
             self.units[column] = self.units[column].fillna(self.units.groupby("uf")[column].transform("mean"))
         self.unit_of = pd.Index(self.units.unit).get_indexer(s.unit)
+        self.keys = s[["uf", "mun", "zona", "secao"]].reset_index(drop=True)
         self.zone_of = pd.Index((s.unit + "-" + s.zona.astype(str)).unique()).get_indexer(s.unit + "-" + s.zona.astype(str))
         self.state_of = pd.Index(sorted(self.units.uf.unique())).get_indexer(self.units.uf)
         self.region_of = self.units.uf.map(REGION).to_numpy()
@@ -103,13 +104,18 @@ def replay(e: Election, left, right, speed, rank, moments=MOMENTS, correct=None,
     unit_r = np.bincount(e.unit_of, weights=right, minlength=len(units))
     out = []
     for t in moments:
-        lo, hi = 0.0, 1e9
-        for _ in range(60):
-            k = (lo + hi) / 2
-            share = np.minimum(1, k * speed) @ units.electorate / units.electorate.sum()
-            lo, hi = (k, hi) if share < t else (lo, k)
-        f = np.minimum(1, k * speed)
-        counted = rank <= f[e.unit_of] + 1e-12
+        if speed is None:  # real order: rank holds each section's receipt time
+            cum = np.cumsum(e.electorate[np.argsort(rank, kind="stable")]) / e.electorate.sum()
+            cutoff = np.sort(rank, kind="stable")[min(np.searchsorted(cum, t), len(rank) - 1)]
+            counted = rank <= cutoff
+        else:
+            lo, hi = 0.0, 1e9
+            for _ in range(60):
+                k = (lo + hi) / 2
+                share = np.minimum(1, k * speed) @ units.electorate / units.electorate.sum()
+                lo, hi = (k, hi) if share < t else (lo, k)
+            f = np.minimum(1, k * speed)
+            counted = rank <= f[e.unit_of] + 1e-12
         agg = lambda v: np.bincount(e.unit_of, weights=v * counted, minlength=len(units))
         snap = units[["unit", "uf", "q", "others", "rate_prior", "electorate"] + list(demo or [])].copy()
         snap["l"], snap["r"] = unit_l, unit_r
@@ -128,6 +134,10 @@ def replay(e: Election, left, right, speed, rank, moments=MOMENTS, correct=None,
         tv = 0.5 * np.abs(counted_mix / counted_mix.sum() - rest_mix / rest_mix.sum()).sum() if counted_mix.sum() > 0 and rest_mix.sum() > 0 else 1.0
         out.append({"moment": t, "frac_nat": snap.frac_nat.iloc[0], "forecast": national(snap, guess), "truth": truth,
                     "forecast_reg": national(snap, snap.base_reg),
+                    "forecast_logit": national(snap, snap.base_logit),
+                    "forecast_clip": national(snap, snap.base.clip(0, 1)),
+                    **{f"forecast_shrink_{k}": national(snap, snap[f"base_shrink_{k}"]) for k in SHRINK_GRID},
+                    "forecast_knn": national(snap, snap.base_knn),
                     **{f"forecast_mix_{m}": national(snap, guess, m) for m in MIX_GRID},
                     "partial": snap.lc.sum() / max(snap.lc.sum() + snap.rc.sum(), 1),
                     # how much of what is left sits in states that have barely reported

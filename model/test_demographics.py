@@ -33,7 +33,7 @@ for year in (2018, 2022):
             rng = np.random.default_rng(1000 * year + i)
             left, right, speed, rank = scenario(e, rng, truth, shocks=(0, 0, 0), order=draws)
             for r in replay(e, left, right, speed, rank, demo=DEMO if label == "com perfil" else None):
-                rows.append({"year": year, "scenario": i, "version": label, **{k: r[k] for k in ("moment", "truth", "forecast", "forecast_reg")}})
+                rows.append({"year": year, "scenario": i, "version": label, **{k: r[k] for k in ("moment", "truth", "forecast", "forecast_reg", "forecast_logit", "forecast_clip")}})
 d = pd.DataFrame(rows)
 d["err_state"] = (d.forecast - d.truth).abs() * 100
 d["err_reg"] = (d.forecast_reg - d.truth).abs() * 100

@@ -8,6 +8,8 @@ page can compute are recorded together with the unit's final result.
 
 Shares are two-party: left candidate / (left + right), the quantity that decides a runoff.
 """
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
@@ -95,7 +97,98 @@ def add_features(snap):
     snap["local"] = snap.p - snap.base  # how this unit's partial count departs from that level
     snap["state_gap"] = snap.swing_state - snap.swing_nat
     snap["base_reg"] = snap.q + regression_swing(snap)
+    snap["base_logit"] = logit_base(snap)
+    for k in SHRINK_GRID:
+        snap[f"base_shrink_{k}"] = snap.q + shrunk_swing(snap, k)
+    snap["base_knn"] = snap.q + neighbour_swing(snap)
     return snap
+
+
+SHRINK_GRID = (20000, 200000)  # counted two-party votes at which a state (or region) gets half the weight of the level above
+NEIGHBOURS = 15
+_centroids = None
+
+
+def centroids():
+    """Projected centroid of every municipality, from the page's own map file (abroad has none)."""
+    global _centroids
+    if _centroids is None:
+        import json
+        shapes = json.loads(Path(__file__).resolve().parent.parent.joinpath("data/municipalities.json").read_text(encoding="utf-8"))["shapes"]
+        points = {}
+        for s in shapes:
+            xs, ys = [], []
+            for ring in s["d"].split("M")[1:]:
+                head, _, rest = ring.partition("l")
+                x, y = map(float, head.split(","))
+                xs.append(x), ys.append(y)
+                for step in rest.rstrip("z").split():
+                    dx, dy = map(float, step.split(","))
+                    x, y = x + dx, y + dy
+                    xs.append(x), ys.append(y)
+            points[s["uf"] + s["tse"]] = (np.mean(xs), np.mean(ys))
+        _centroids = points
+    return _centroids
+
+
+def shrunk_swing(snap, k):
+    """State swing pulled towards its region's, and the region's towards the nation's, by counted votes."""
+    votes = (snap.lc + snap.rc).to_numpy()
+    gap = (snap.lc - snap.q * (snap.lc + snap.rc)).to_numpy()
+    region = snap.uf.map(REGIONS).to_numpy()
+    nat = gap.sum() / votes.sum() if votes.sum() > 0 else 0.0
+    rv, rg = np.bincount(region, weights=votes, minlength=6), np.bincount(region, weights=gap, minlength=6)
+    reg = (rg + k * nat) / (rv + k)
+    states = pd.DataFrame({"uf": snap.uf, "v": votes, "g": gap, "r": region}).groupby("uf").agg(v=("v", "sum"), g=("g", "sum"), r=("r", "first"))
+    state = (states.g + k * reg[states.r.to_numpy()]) / (states.v + k)
+    return snap.uf.map(state).to_numpy()
+
+
+def neighbour_swing(snap):
+    """Swing of the nearest counted municipalities (by map distance), weighted by their counted votes."""
+    from scipy.spatial import cKDTree
+    votes = (snap.lc + snap.rc).to_numpy()
+    gap = (snap.lc - snap.q * (snap.lc + snap.rc)).to_numpy()
+    nat = gap.sum() / votes.sum() if votes.sum() > 0 else 0.0
+    xy = np.array([centroids().get(u, (np.nan, np.nan)) for u in snap.unit])
+    seen = (votes > 0) & ~np.isnan(xy[:, 0])
+    if seen.sum() < NEIGHBOURS:
+        return np.full(len(snap), nat)
+    tree = cKDTree(xy[seen])
+    out = np.full(len(snap), nat)
+    has = ~np.isnan(xy[:, 0])
+    _, idx = tree.query(xy[has], k=NEIGHBOURS)
+    v, g = votes[seen][idx], gap[seen][idx]
+    out[has] = g.sum(axis=1) / np.maximum(v.sum(axis=1), 1)
+    return out
+
+
+def logit_base(snap):
+    """Base with the swing applied in logit, which never leaves 0-100%: per state, the shift delta that makes
+    expit(logit q + delta) reproduce the left votes counted there (nationally while the state is under 1%)."""
+    q = snap.q.clip(0.001, 0.999).to_numpy()
+    lq = np.log(q / (1 - q))
+    votes = (snap.lc + snap.rc).to_numpy()
+    left = snap.lc.to_numpy()
+
+    def shift(mask):
+        if votes[mask].sum() <= 0:
+            return 0.0
+        delta = 0.0
+        for _ in range(30):  # Newton on sum(votes * expit(lq + delta)) = sum(left)
+            p = 1 / (1 + np.exp(-(lq[mask] + delta)))
+            f = (votes[mask] * p).sum() - left[mask].sum()
+            g = (votes[mask] * p * (1 - p)).sum()
+            if g <= 0:
+                break
+            delta -= f / g
+        return delta
+
+    nat = shift(np.ones(len(snap), dtype=bool))
+    uf = snap.uf.to_numpy()
+    frac = dict(zip(snap.uf, snap.frac_state))
+    deltas = {s: (shift(uf == s) if frac[s] >= STATE_SWING_FROM else nat) for s in frac}
+    return 1 / (1 + np.exp(-(lq + np.array([deltas[s] for s in uf]))))
 
 
 REGIONS = {**dict.fromkeys(["ac", "am", "ap", "pa", "ro", "rr", "to"], 0), **dict.fromkeys(["al", "ba", "ce", "ma", "pb", "pe", "pi", "rn", "se"], 1),
