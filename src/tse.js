@@ -64,7 +64,7 @@ export class Tally {
     out.isDone = out.sectionsPct === '100,00';
     out.blankPct = pct(out.blankVotes, out.totalVotes);
     out.nullPct = pct(out.nullVotes, out.totalVotes);
-    out.abstentionPct = pct(out.abstentions, out.electorate);
+    out.abstentionPct = pct(out.abstentions, out.electorateCounted); // as the TSE: over the sections counted
     return out;
   }
 
@@ -115,7 +115,7 @@ export class TseClient {
     const area = municipality || uf;
     const url = `${this.root}/dados/${uf}/${uf}${municipality}${this.suffix}`;
     try {
-      const response = await fetch(url, { cache: 'no-cache' });
+      const response = await fetch(url, { cache: 'no-cache', signal: AbortSignal.timeout(20_000) }); // a hung request must not stall the page
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const tally = new Tally(await response.json(), `${this.root}/fotos/br`);
       if (tally.election !== this.election || tally.area !== area) {
@@ -124,6 +124,7 @@ export class TseClient {
       this.#lastGood.set(url, tally);
     } catch (error) {
       console.warn(`TSE file unavailable: ${url}`, error);
+      if (this.#lastGood.has(url)) this.#lastGood.get(url).stale = true; // shown as a failed attempt
     }
     return this.#lastGood.get(url) ?? null;
   }

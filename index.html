@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Apuração em tempo real do 2º turno presidencial de 2026: Brasil, estados e municípios, direto dos dados do TSE.">
   <title>Apuração 2026 · 2º turno ao vivo</title>
-  <link rel="stylesheet" href="styles.css?v=20">
-  <script type="module" src="src/app.js?v=20"></script>
+  <link rel="stylesheet" href="styles.css?v=21">
+  <script type="module" src="src/app.js?v=21"></script>
 </head>
 <body>
   <header>
@@ -17,6 +17,9 @@
     <button type="button" role="tab" data-tab="apuracao" aria-selected="true">Apuração</button>
     <button type="button" role="tab" data-tab="previsao" aria-selected="false">Previsão</button>
   </nav>
+  <!-- Outside the tabs, so the song also plays for someone who opened the forecast tab. -->
+  <p id="cheer-hint" class="sub cheer-hint">♪ Quando Lula passar à frente, toca um trecho de música. O navegador só libera o som depois do primeiro toque ou clique em qualquer lugar desta página.</p>
+  <div id="cheer-player"></div>
   <div id="tab-apuracao" class="tab-panel">
 
   <section id="duel" class="card">
@@ -24,8 +27,6 @@
     <p class="sub"></p>
     <div class="duel"></div>
     <div id="tiles" class="tiles"></div>
-    <p id="cheer-hint" class="sub cheer-hint">♪ Quando Lula passar à frente, toca um trecho de música. O navegador só libera o som depois do primeiro toque ou clique em qualquer lugar desta página.</p>
-    <div id="cheer-player"></div>
   </section>
 
 

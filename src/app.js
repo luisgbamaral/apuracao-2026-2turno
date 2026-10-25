@@ -1,13 +1,13 @@
-import { ABROAD, CANDIDATE_COLORS, CHEER, ELECTION, MUNICIPAL_REFRESH_MS, PRESIDENT, REFRESH_MS, STATES, TSE_BASE } from './config.js?v=20';
-import { LivePage } from './live-page.js?v=20';
-import { LeadCheer } from './cheer.js?v=20';
-import { Forecast } from './forecast.js?v=20';
-import { ForecastView } from './forecast-view.js?v=20';
-import { ChoroplethMap } from './map.js?v=20';
-import { MunicipalFeed } from './municipal-feed.js?v=20';
-import { RunoffPalette } from './palette.js?v=20';
-import { Tally, TseClient } from './tse.js?v=20';
-import { HeadToHead, StateTable, describeTally, formatInt, renderLegend } from './views.js?v=20';
+import { ABROAD, CANDIDATE_COLORS, CHEER, ELECTION, MUNICIPAL_REFRESH_MS, PRESIDENT, REFRESH_MS, STATES, TSE_BASE } from './config.js?v=21';
+import { LivePage } from './live-page.js?v=21';
+import { LeadCheer } from './cheer.js?v=21';
+import { Forecast } from './forecast.js?v=21';
+import { ForecastView } from './forecast-view.js?v=21';
+import { ChoroplethMap } from './map.js?v=21';
+import { MunicipalFeed } from './municipal-feed.js?v=21';
+import { RunoffPalette } from './palette.js?v=21';
+import { Tally, TseClient } from './tse.js?v=21';
+import { HeadToHead, StateTable, describeTally, formatInt, renderLegend } from './views.js?v=21';
 
 const $ = id => document.getElementById(id);
 const AREAS = { ...STATES, ...ABROAD };
@@ -56,7 +56,8 @@ class Dashboard extends LivePage {
   render({ national: file, states }) {
     // The headline follows whichever count is further along: the national file or the states added up.
     const summed = Tally.sum(Object.values(states));
-    const national = summed && summed.sectionsCounted > (file?.sectionsCounted ?? -1) ? summed : file;
+    const ahead = summed && summed.sectionsCounted > (file?.sectionsCounted ?? -1) && summed.validVotes >= (file?.validVotes ?? 0);
+    const national = ahead ? summed : file;
     if (!national) {
       this.status.textContent = `Não foi possível consultar o TSE (tentativa às ${new Date().toLocaleTimeString('pt-BR')}). Nova tentativa em 1 minuto.`;
       return;
@@ -66,6 +67,9 @@ class Dashboard extends LivePage {
     this.status.textContent = national.updatedAt
       ? `Última totalização do TSE: ${national.updatedAt} · ${this.refreshNote}${national.isFinal ? ' · totalização encerrada' : ''}`
       : `O TSE ainda não totalizou nenhuma seção · ${this.refreshNote}`;
+    if ([file, ...Object.values(states)].some(t => t?.stale)) {
+      this.status.textContent += ` · o TSE não respondeu na tentativa das ${new Date().toLocaleTimeString('pt-BR')}; mostrando o último dado recebido`;
+    }
     $('tiles').innerHTML = [
       [`${national.sectionsPct}%`, 'seções totalizadas'],
       [formatInt(national.validVotes), 'votos válidos'],
