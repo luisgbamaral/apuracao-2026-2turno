@@ -1,11 +1,15 @@
-import { HISTORY_URL } from './config.js?v=23';
-import { esc } from './views.js?v=23';
+import { HISTORY_URL } from './config.js?v=24';
+import { esc } from './views.js?v=24';
 
 const pct = (x, digits = 1) => (100 * x).toLocaleString('pt-BR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 // A chance is shown between 1% and 99%: beyond that the model's own uncertainty about itself dominates.
 const chanceText = (p, decided) => (decided ? '100%' : p > 0.99 ? 'mais de 99%' : p < 0.01 ? 'menos de 1%' : `${pct(p, 0)}%`);
-// First accuracy table on the page: share counted -> % of simulated elections the favourite won.
-const HITS = [[0.01, 67], [0.1, 69], [0.3, 72], [0.5, 75], [0.7, 81], [0.8, 87], [0.9, 91], [0.95, 96]];
+// How often the model's favourite won in the 2022-mold simulations (the closest to 2026: few first-round votes for
+// other candidates), by stage of the count (rows) and projected gap in points (columns); null where under 20 cases.
+const STAGES = [[0.035, 'até 2%'], [0.125, '5% a 10%'], [0.35, '15% a 30%'], [0.65, '40% a 60%'], [0.85, '70% a 80%'], [Infinity, '90% ou mais']];
+const GAPS = [[1, 'menos de 1 ponto'], [2, '1 a 2 pontos'], [3, '2 a 3 pontos'], [5, '3 a 5 pontos'], [8, '5 a 8 pontos'], [Infinity, 'mais de 8 pontos']];
+const WON = [[42, 64, 60, 76, 96, 100], [47, 57, 78, 97, 100, 100], [56, 55, 93, 100, 100, 100],
+  [50, 81, 100, 100, 100, 100], [69, 97, 100, 100, 100, 100], [85, 100, 100, 100, 100, 100]];
 const LABELS = [[0.95, 'forte favorito'], [0, 'favorito']]; // used once the 80% interval no longer includes 50%
 
 /**
@@ -62,15 +66,17 @@ export class ForecastView {
     this.#drawChart(left, right);
   }
 
-  /** How often the model's favourite won in the simulations at this share counted (the page's accuracy table). */
-  static #caveat({ counted, decided }) {
+  /** How often a favourite with a similar projected gap, at this stage of the count, won in the simulations. */
+  static #caveat({ counted, decided, share }) {
     if (decided) return '';
-    const [at, hit] = HITS.findLast(([m]) => m <= counted) ?? HITS[0];
+    const stage = STAGES.findIndex(([upTo]) => counted < upTo);
+    const gap = GAPS.findIndex(([upTo]) => Math.abs(share - 0.5) * 200 < upTo);
+    const won = WON[stage][gap];
     const done = counted < 0.001 ? 'menos de 0,1%' : `${pct(counted)}%`;
-    const stage = counted < 0.1 ? 'ainda é cedo' : counted < 0.5 ? 'a previsão ainda pode mudar' : 'a previsão já está mais firme';
-    return `<span class="sub caveat"><b>Quanto confiar agora:</b> com ${done} apurado, ${stage}. ` +
-      `Nas 500 eleições simuladas, com ${pct(at, 0)}% apurado, o favorito do modelo venceu em ${hit}% delas ` +
-      '(metade foi decidida por menos de 2 pontos).</span>';
+    const reading = counted < 0.1 ? 'ainda é cedo' : counted < 0.5 ? 'a previsão ainda pode mudar' : 'a previsão já está mais firme';
+    return `<span class="sub caveat"><b>Quanto confiar agora:</b> com ${done} apurado, ${reading}. ` +
+      `Nas simulações a partir do 2º turno de 2022, o mais parecido com este, quando o modelo projetava uma diferença de ${GAPS[gap][1]} ` +
+      `com ${STAGES[stage][1]} apurado, o favorito venceu ${won === 100 ? 'em todas' : `em ${won}% delas`}.</span>`;
   }
 
   #remember(result) {
