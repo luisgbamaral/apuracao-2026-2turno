@@ -3,12 +3,13 @@
  * under 1 kB gzipped each). Three things keep a pass down to what changed:
  *  - files are requested with revalidation, and the TSE answers an unchanged file with an empty 304;
  *  - a state whose own file shows no new totalization is skipped, so its municipalities cost no request;
- *  - a municipality fully counted leaves the queue.
+ *  - a municipality fully counted leaves the queue;
+ *  - a state with no section counted yet needs no request at all: its municipalities have no votes.
  * The state file and a municipal file can come from CDN copies of different ages, so a state with
  * municipalities still counting is checked again after RECHECK_MS even if its file did not move.
  */
 export class MunicipalFeed {
-  static CONCURRENCY = 24;
+  static CONCURRENCY = 32;
   static PROGRESS_EVERY = 250; // repaint after this many files
   static RECHECK_MS = 300_000;
 
@@ -29,6 +30,11 @@ export class MunicipalFeed {
     return this.tallies.size;
   }
 
+  /** Every state has been read at least once (or was known to have nothing counted). */
+  get complete() {
+    return this.municipalities.every(m => this.#synced.has(m.uf));
+  }
+
   /** One pass over the municipalities that may have changed; onProgress repaints as files arrive. */
   async refresh(states, onProgress) {
     if (this.#running) return;
@@ -39,6 +45,9 @@ export class MunicipalFeed {
       const last = this.#synced.get(uf);
       return !last || last.stamp !== stamps[uf] || now - last.at > MunicipalFeed.RECHECK_MS;
     };
+    for (const [uf, tally] of Object.entries(states)) {
+      if (tally && tally.sectionsCounted === 0 && due(uf)) this.#synced.set(uf, { stamp: stamps[uf], at: now });
+    }
     const queue = this.municipalities.filter(m => !this.tallies.get(m.tse)?.isDone && due(m.uf));
     const failed = new Set();
     let fetched = 0;

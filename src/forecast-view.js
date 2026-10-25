@@ -1,4 +1,4 @@
-import { esc } from './views.js?v=7';
+import { esc } from './views.js?v=13';
 
 const pct = (x, digits = 1) => (100 * x).toLocaleString('pt-BR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 // A chance is shown between 1% and 99%: beyond that the model's own uncertainty about itself dominates.
@@ -38,14 +38,14 @@ export class ForecastView {
       ? `<span class="sub">Definido pela apuração</span><b ${color}>${esc(favourite.c.name)} vence</b>` +
         '<span class="sub">a vantagem já é maior que todos os eleitores que faltam apurar</span>'
       : !label
-        ? '<b>Sem favorito claro</b><span class="sub">nenhum dos dois passa de 60% de chance</span>'
+        ? '<b>Empate técnico</b><span class="sub">nenhum dos dois passa de 60% de chance</span>'
         : `<span class="sub">Aposta do modelo: ${label}</span><b ${color}>${esc(favourite.c.name)}</b>` +
           `<span class="sub">com ${chanceText(favourite.chance)} de chance de vencer</span>`;
     this.rows.innerHTML = sides.map(s => `
       <div class="chance" style="--c:${this.palette.colorOf(s.c)}">
         <span class="who">${esc(s.c.name)}</span>
         <b>${chanceText(s.chance, result.decided && s === favourite)}</b><span class="sub">de chance de vencer</span>
-        <span class="sub">resultado final previsto: <b>${pct(s.share)}%</b> dos votos válidos (80% de confiança: ${pct(s.low)}% a ${pct(s.high)}%)</span>
+        <span class="sub">resultado final previsto: <b>${pct(s.share)}% ± ${pct((s.high - s.low) / 2)} pontos</b> dos votos válidos (80% de confiança: ${pct(s.low)}% a ${pct(s.high)}%)</span>
         <div class="meter"><span style="width:${100 * s.chance}%"></span></div>
       </div>`).join('');
     this.note.textContent = `Previsão com ${pct(result.counted)}% do eleitorado nas seções totalizadas. ` +

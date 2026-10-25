@@ -1,13 +1,13 @@
-import { ABROAD, CANDIDATE_COLORS, CHEER, ELECTION, MUNICIPAL_REFRESH_MS, PRESIDENT, REFRESH_MS, STATES, TSE_BASE } from './config.js?v=7';
-import { LivePage } from './live-page.js?v=7';
-import { LeadCheer } from './cheer.js?v=7';
-import { Forecast } from './forecast.js?v=7';
-import { ForecastView } from './forecast-view.js?v=7';
-import { ChoroplethMap } from './map.js?v=7';
-import { MunicipalFeed } from './municipal-feed.js?v=7';
-import { RunoffPalette } from './palette.js?v=7';
-import { TseClient } from './tse.js?v=7';
-import { HeadToHead, StateTable, describeTally, formatInt, renderLegend } from './views.js?v=7';
+import { ABROAD, CANDIDATE_COLORS, CHEER, ELECTION, MUNICIPAL_REFRESH_MS, PRESIDENT, REFRESH_MS, STATES, TSE_BASE } from './config.js?v=13';
+import { LivePage } from './live-page.js?v=13';
+import { LeadCheer } from './cheer.js?v=13';
+import { Forecast } from './forecast.js?v=13';
+import { ForecastView } from './forecast-view.js?v=13';
+import { ChoroplethMap } from './map.js?v=13';
+import { MunicipalFeed } from './municipal-feed.js?v=13';
+import { RunoffPalette } from './palette.js?v=13';
+import { Tally, TseClient } from './tse.js?v=13';
+import { HeadToHead, StateTable, describeTally, formatInt, renderLegend } from './views.js?v=13';
 
 const $ = id => document.getElementById(id);
 const AREAS = { ...STATES, ...ABROAD };
@@ -53,9 +53,12 @@ class Dashboard extends LivePage {
     return { national, states: Object.fromEntries(areas.map((uf, i) => [uf, byArea[i]])) };
   }
 
-  render({ national, states }) {
+  render({ national: file, states }) {
+    // The headline follows whichever count is further along: the national file or the states added up.
+    const summed = Tally.sum(Object.values(states));
+    const national = summed && summed.sectionsCounted > (file?.sectionsCounted ?? -1) ? summed : file;
     if (!national) {
-      this.status.textContent = 'Não foi possível consultar o TSE. Nova tentativa em instantes.';
+      this.status.textContent = `Não foi possível consultar o TSE (tentativa às ${new Date().toLocaleTimeString('pt-BR')}). Nova tentativa em 1 minuto.`;
       return;
     }
     this.national = national;
@@ -83,16 +86,24 @@ class Dashboard extends LivePage {
   #refreshMunicipalities() {
     if (!this.national?.validVotes || document.hidden) return;
     this.feed.refresh(this.states, () => {
-      if (!this.feed.running) this.#runForecast();
+      this.#runForecast();
       this.municipalMap.paint(code => this.palette.fill(this.feed.tallies.get(code)));
       $('municipal-status').textContent =
-        `${formatInt(this.feed.loaded)} de ${formatInt(this.feed.municipalities.length)} municípios carregados · conferidos a cada ${MUNICIPAL_REFRESH_MS / 1000} s, baixando só os que mudaram`;
+        `${formatInt(this.feed.loaded)} municípios lidos (os de estados ainda sem apuração não precisam) · conferidos a cada ${MUNICIPAL_REFRESH_MS / 1000} s`;
     });
   }
 
-  /** Once every municipality has been read, after each pass. */
+  /**
+   * As municipal files arrive, once the municipalities read hold 95% of the votes the state files show as counted
+   * (the rest is taken as not counted yet, which the early uncertainty floor covers). The national file can run
+   * ahead of the state and municipal ones, so it is not the yardstick.
+   */
   #runForecast() {
-    if (this.feed.loaded < this.feed.municipalities.length * 0.99) return;
+    const votes = tally => tally?.candidates.filter(c => c.number in CANDIDATE_COLORS).reduce((sum, c) => sum + c.votes, 0) ?? 0;
+    let read = votes(this.states.zz);
+    for (const tally of this.feed.tallies.values()) read += votes(tally);
+    const counted = Object.values(this.states).reduce((sum, tally) => sum + votes(tally), 0);
+    if (!counted || (!this.feed.complete && read < 0.95 * counted)) return;
     const result = this.forecast.run(unit => (unit === 'zz' ? this.states.zz : this.feed.tallies.get(unit.slice(2))));
     const [left, right] = [CHEER.candidate, CHEER.rival].map(n => this.national.candidates.find(c => c.number === n));
     this.forecastView.render(result, left, right);
@@ -107,4 +118,5 @@ class Dashboard extends LivePage {
   }
 }
 
-new Dashboard().start();
+window.dashboard = new Dashboard(); // exposed for inspection from the console
+window.dashboard.start();
