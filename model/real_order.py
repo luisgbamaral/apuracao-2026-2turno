@@ -19,10 +19,10 @@ FOLDER = Path("model/cache/bweb")
 PACKAGE = "https://dadosabertos.tse.jus.br/api/3/action/package_show?id=resultados-{year}-boletim-de-urna"
 
 
-def urls(year):
+def urls(year, turn=2):
     with urllib.request.urlopen(PACKAGE.format(year=year), timeout=120) as r:
         resources = json.load(r)["result"]["resources"]
-    return [x["url"] for x in resources if x["url"].lower().endswith(".zip") and "_2t_" in x["url"].lower()]
+    return [x["url"] for x in resources if x["url"].lower().endswith(".zip") and f"_{turn}t_" in x["url"].lower()]
 
 
 def reduce(year, url):
@@ -40,7 +40,7 @@ def reduce(year, url):
     uf = next(n for n in names if n.replace(" ", "") == "SG_UF")
     time = "DT_BU_RECEBIDO" if "DT_BU_RECEBIDO" in names else "DT_ENCERRAMENTO"
     duckdb.sql(f"""COPY (SELECT lower("{uf}") AS uf, CAST(CD_MUNICIPIO AS INT) AS mun, CAST(NR_ZONA AS INT) AS zona, CAST(NR_SECAO AS INT) AS secao,
-                               min(try_strptime({time}, '%d/%m/%Y %H:%M:%S')) AS time, '{time}' AS source
+                               min(coalesce(try_strptime({time}, '%d/%m/%Y %H:%M:%S'), try_strptime({time}, '%Y-%m-%d %H:%M:%S'))) AS time, '{time}' AS source
                         FROM read_csv('{csv.as_posix()}', delim=';', header=true, encoding='latin-1', all_varchar=true)
                         WHERE CD_CARGO_PERGUNTA = '1' GROUP BY ALL)
                    TO '{out.as_posix()}' (FORMAT parquet)""")
@@ -51,10 +51,11 @@ def reduce(year, url):
 
 def main():
     FOLDER.mkdir(parents=True, exist_ok=True)
-    for year in map(int, sys.argv[1:]):
-        parts = [reduce(year, url) for url in urls(year)]
+    for arg in sys.argv[1:]:  # "2022" for the runoff, "2026:1" for a first round
+        year, turn = (int(x) for x in (arg.split(":") + ["2"])[:2])
+        parts = [reduce(year, url) for url in urls(year, turn)]
         d = pd.concat(pd.read_parquet(p) for p in parts)
-        d.to_parquet(FOLDER / f"order_{year}.parquet")
+        d.to_parquet(FOLDER / f"order_{year}{'' if turn == 2 else f'_{turn}t'}.parquet")
         print(year, len(d), "sections", d.source.iloc[0], d.time.min(), d.time.max())
 
 
