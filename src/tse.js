@@ -22,6 +22,10 @@ export class Tally {
     this.hasStatuses = this.candidates.some(c => c.elected);
     this.isMathematicallyDecided = json.md === 'e'; // published while counting, gone once the count ends
     this.sectionsPct = s.pst || '0,00';
+    this.sections = Number(s.ts) || 0;
+    this.sectionsCounted = Number(s.st) || 0;
+    this.electorate = Number(e.te) || 0;
+    this.electorateCounted = Number(e.est) || 0; // voters registered in the sections already counted
     this.isDone = this.isFinal || this.sectionsPct === '100,00';
     this.validVotes = Number(v.vv) || 0;
     this.blankPct = v.pvb || '0,00';

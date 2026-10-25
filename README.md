@@ -26,6 +26,10 @@ src/map.js                 ChoroplethMap (SVG map, tooltip, zoom)
 src/views.js               HeadToHead, StateTable, legend and tooltip
 src/live-page.js           LivePage (refresh loop)
 src/app.js                 Dashboard
+src/forecast.js            Forecast (point, uncertainty, chance)
+src/forecast-view.js       ForecastView (bet, chances, time series)
+src/cheer.js               LeadCheer (song excerpt when Lula takes the lead, opt-in)
+model/                     data extraction, synthetic counts, calibration, export, tests
 ```
 
 Design notes:
@@ -36,6 +40,29 @@ Design notes:
 - **A winner is shown only when the TSE says so:** its "Eleito" status after the count, or its mathematically-decided flag before that, as a neutral tag.
 - **Maps are plain SVG.** `tools/build_shapes.py` projects the IBGE boundaries once (equirectangular, integer units, relative moves), so the browser only sets fills. One municipality created after the IBGE boundaries (Boa Esperança do Norte, MT) counts in every total but has no shape.
 - **A missing file never blanks the page.** Each request fails on its own and keeps the last good count.
+
+## Forecast
+
+Every minute, once all municipal files are read, the page forecasts the final two-party share and each candidate's chance of winning, with an 80% interval, and keeps a time series of the chances in the browser. A plain-language methodology sits at the end of the forecast card.
+
+- **Point.** Counted votes, plus each municipality's remaining votes at a share that blends its own partial count (weight f/(f+1.5), f = share of its sections counted) with a base: its 2026 first-round two-party share plus the swing seen so far in its state, or nationally while the state has under 1% counted. Remaining votes come from the uncounted electorate at a blended rate of votes per elector.
+- **Uncertainty.** Student t (5 degrees of freedom) with sigma^2 = R^(2a) (c^2 + kappa^2 D^2) + tau^2 sum_s (R_s (o0 + O_s))^2 + floor^2, where R is the expected share of votes still to count (R_s per state), D how different the regional mix of what is left is from what came in, and O_s the first-round share of other candidates in the state. Floors keep the start humble: 2.5 points until 3% is counted, 1 point while half of what is left sits in states with under 5% counted. "Defined" only when the lead exceeds every voter left to count.
+- **Calibration.** 500 synthetic elections from the real 2018 and 2022 runoffs (sections shocked by regional, state and municipal swings, half of them within one point of a tie), each counted in an order drawn from families seen on Brazilian nights: states and regions in waves, North and Northeast late, capitals and big cities late, order tied to lean or to other candidates' share, whole electoral zones arriving in blocks.
+
+| Check (500 synthetic elections, 14 moments) | Result |
+|---|---|
+| Loser given 99% or more at any moment | 0% |
+| Loser given 95% or more at any moment | 4% |
+| 90% interval coverage, all / 2022 mold / 2018 mold | 95% / 97% / 94% |
+| 90% interval coverage by share counted | 86% to 99% |
+| Calibration error of the chance (ECE) | 0.089 (target was 0.03; the chance errs on the humble side mid-count) |
+| Fitted on 2022 only, tested on 2018 | 64% coverage: 2018 (38% of first-round votes for other candidates) is a harder regime than 2022 and 2026 (about 8%) |
+
+The page and its Python twin (`model/plan_b.py`) agree to 1e-13 on 32 golden snapshots (`model/golden.py`); a forecast takes under 10 ms.
+
+**Tested and left out.** XGBoost, LightGBM, CatBoost and random forest, tuned with Optuna (20 trials each) and validated leave-one-election-out on municipal shares, did not beat the base (RMSE 0.0234, 0.0236, 0.0247 and 0.0245 against 0.0233); trees cannot extrapolate the level of a new election. A ridge regression of the swing on municipal characteristics with a vote-transfer term was worse on the synthetic counts. Laya, a local text model with calibrated typed answers, scored a Brier of 0.355 on 294 anonymised synthetic snapshots against 0.128 for the forecast and 0.257 for the raw count (`model/laya_report.json`). The design was reviewed by a panel of agents (statistics, applied mathematics, empirical economics, data science, quantitative political science) that reached a consensus; the published version is its fallback plan, because the full model's acceptance criteria were not met in time.
+
+**Rebuild** (needs the section panel of `rio_painel_secao`): `python model/sections.py`, `python model/calibrate.py 250 18 2018 model/cache/calib_2018.parquet`, the same for 2022, `python model/fit_sigma.py`, `python model/export.py`, `python model/golden.py`.
 
 ## Run locally
 
@@ -54,5 +81,5 @@ Results and photos: [TSE](https://resultados.tse.jus.br). Boundaries and names: 
 GitHub Pages caches every file for 10 minutes, so every stylesheet, script and import carries a `?v=N` query; bump it in one go before publishing:
 
 ```bash
-sed -i -E 's/\?v=[0-9]+/?v=2/' index.html src/*.js
+sed -i -E 's/\?v=[0-9]+/?v=4/' index.html src/*.js
 ```

@@ -8,8 +8,11 @@ export const PRESIDENT = '0001';
 // Colour of each candidate by ballot number: blue for Flávio Bolsonaro, red for Lula.
 export const CANDIDATE_COLORS = { 22: 'var(--flavio)', 13: 'var(--lula)' };
 
+// A song excerpt played when this candidate takes the national lead, stopped if the rival takes it back.
+export const CHEER = { candidate: 13, rival: 22, name: 'Lula', track: '65TdX1tJ7TuK4763AqU0yG', seconds: 15 };
+
 export const REFRESH_MS = 60_000; // the TSE serves each file with max-age=57
-export const MUNICIPAL_REFRESH_MS = 300_000; // 5,570 files: refreshed less often, finished ones skipped
+export const MUNICIPAL_REFRESH_MS = 60_000; // passes never overlap, and only fetch what may have changed
 
 export const STATES = {
   ac: 'Acre', al: 'Alagoas', am: 'Amazonas', ap: 'Amapá', ba: 'Bahia', ce: 'Ceará', df: 'Distrito Federal',

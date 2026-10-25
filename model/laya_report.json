@@ -1,0 +1,22 @@
+{
+ "laya": {
+  "brier": 0.354623036292517,
+  "logloss": 0.9345440053022405,
+  "wrong_with_p_above_0.95": 0
+ },
+ "model": {
+  "brier": 0.12848248772272697,
+  "logloss": 0.39695108662423706,
+  "wrong_with_p_above_0.95": 3
+ },
+ "raw count (leader 99%)": {
+  "brier": 0.2567666666666667,
+  "logloss": 1.213534106126846,
+  "wrong_with_p_above_0.95": 77
+ },
+ "laya minus model brier, 95% interval": [
+  0.19268130996299226,
+  0.2594170490617795
+ ],
+ "snapshots": 294
+}

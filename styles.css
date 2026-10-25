@@ -161,3 +161,45 @@ th, td { padding: 4px 6px; border-top: 1px solid var(--hairline); white-space: n
 thead th { border-top: 0; }
 [hidden] { display: none; }
 .num { text-align: right; }
+
+.toggle {
+  margin-top: 12px;
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.toggle[aria-pressed="true"] { border-color: var(--lula); color: var(--ink); }
+#cheer-player { margin-top: 8px; }
+
+/* Forecast */
+h3.sub { margin: 14px 0 4px; font-weight: 600; }
+.forecast-grid { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 2fr); gap: 16px; margin-top: 12px; align-items: center; }
+.bet { display: flex; flex-direction: column; }
+.bet b { font-size: 26px; line-height: 1.15; }
+.chances { display: grid; gap: 10px; }
+.chance { display: grid; grid-template-columns: 140px auto 1fr; align-items: baseline; gap: 2px 8px; }
+.chance .who { font-weight: 600; }
+.chance > b { font-size: 22px; color: var(--c); font-variant-numeric: tabular-nums; }
+.chance > .sub:nth-of-type(3) { grid-column: 1 / -1; }
+.meter { grid-column: 1 / -1; height: 8px; border-radius: 4px; background: var(--none); overflow: hidden; }
+.meter span { display: block; height: 100%; background: var(--c); }
+.chart { display: block; width: 100%; height: auto; max-height: 260px; }
+.chart .grid { stroke: var(--hairline); }
+.chart .mid { stroke: var(--ink-2); stroke-dasharray: 4 3; }
+.chart .axis, .chart .empty { fill: var(--ink-2); font-size: 11px; }
+.chart .empty { text-anchor: middle; }
+.note { margin-top: 6px; }
+@media (max-width: 700px) {
+  .forecast-grid { grid-template-columns: minmax(0, 1fr); }
+  .chance { grid-template-columns: 1fr auto; }
+}
+
+.method { margin-top: 12px; font-size: 13px; color: var(--ink-2); }
+.method summary { cursor: pointer; color: var(--ink); font-weight: 600; }
+.method ol { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 6px; }
+.method b { color: var(--ink); }
