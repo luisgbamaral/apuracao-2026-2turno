@@ -12,6 +12,13 @@ const REGIONS = { ac: 0, am: 0, ap: 0, pa: 0, ro: 0, rr: 0, to: 0, al: 1, ba: 1,
 const T80 = 1.4759; // 90th percentile of Student t with 5 degrees of freedom: the 80% interval
 
 /** CDF of Student t with 5 degrees of freedom (closed form for odd degrees). */
+/** Linear interpolation, flat beyond the ends (as numpy.interp). */
+const interp = (x, xs, ys) => {
+  const i = xs.findIndex(v => v >= x);
+  if (i <= 0) return ys[i === 0 ? 0 : ys.length - 1];
+  return ys[i - 1] + ((ys[i] - ys[i - 1]) * (x - xs[i - 1])) / (xs[i] - xs[i - 1]);
+};
+
 export function t5(x) {
   const theta = Math.atan(x / Math.sqrt(5));
   const c = Math.cos(theta);
@@ -88,13 +95,21 @@ export class Forecast {
     const lead = sum(rows.map(r => r.lc - r.rc));
     const uncounted = sum(rows.map(r => Math.max(r.electorate - r.ec, 0)));
     const decided = Math.abs(lead) > uncounted ? Math.sign(lead) : 0;
-    const chance = decided ? (decided > 0 ? 1 : 0) : t5((share - 0.5) / sd);
+    const chance = decided ? (decided > 0 ? 1 : 0) : this.#calibrate(t5((share - 0.5) / sd), nat.ec / nat.e);
     return { share, low: share - T80 * sd, high: share + T80 * sd, chance, decided, counted: nat.ec / nat.e, sd };
+  }
+
+  /** The raw chance mapped to how often a favourite with it won in the simulations at this stage, never above the raw one. */
+  #calibrate(raw, counted) {
+    const { counted: centers, knots, values } = this.p.calibration;
+    const fav = Math.max(raw, 1 - raw);
+    const cal = Math.min(fav, interp(counted, centers, values.map(v => interp(fav, knots, v))));
+    return raw >= 0.5 ? cal : 1 - cal;
   }
 
   /** Uncertainty of the national share, with floors that keep the start of the night humble. */
   #sigma(rows, total, states, countedShare) {
-    const { c, kappa, tau, n0, floor, o0, a, inflate, floor_start, floor_start_until, floor_dark, dark_from, others_by_state } = this.p;
+    const { c, kappa, tau, n0, floor, o0, a, inflate, floor_start, floor_start_until, floor_start_end, floor_dark, dark_from, others_by_state } = this.p;
     const restOf = new Map();
     const countedMix = new Array(6).fill(0);
     const leftMix = new Array(6).fill(0);
@@ -117,7 +132,8 @@ export class Forecast {
     let state = 0;
     for (const [uf, r] of restOf) state += (r * (o0 + others_by_state[uf])) ** 2 * n0 / (n0 + states.get(uf).ec);
     let sd = inflate * Math.sqrt(rest ** (2 * a) * (c * c + kappa * kappa * distance * distance) + tau * tau * state + floor * floor);
-    if (countedShare < floor_start_until) sd = Math.max(sd, floor_start);
+    const fade = (floor_start_end - countedShare) / (floor_start_end - floor_start_until); // held, then fading: no jump
+    sd = Math.max(sd, floor_start * Math.min(Math.max(fade, 0), 1));
     if (remaining > 0 && dark / remaining >= dark_from) sd = Math.max(sd, floor_dark);
     return sd;
   }

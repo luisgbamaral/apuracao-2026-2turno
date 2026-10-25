@@ -23,7 +23,8 @@ from scenarios import Election, replay  # noqa: E402
 MOMENTS = [0.005, 0.01, 0.02, 0.03, 0.05, 0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 0.95]
 CANDIDATES = {"página": "forecast", "logit": "forecast_logit", "encolhido": "forecast_shrink_20000", "vizinhos": "forecast_knn",
               "regressão": "forecast_reg", "capital x interior": "forecast_capital", "faixas de perfil": "forecast_lean",
-              "faixas de abstenção": "forecast_abst", "participação por estado": "forecast_turnout_state"}
+              "faixas de abstenção": "forecast_abst", "participação por estado": "forecast_turnout_state",
+              "peso do 1º turno": "forecast_r1w"}
 KEYS = ["uf", "mun", "zona", "secao"]
 PARAMS = json.loads(Path("data/model.json").read_text(encoding="utf-8"))  # exactly what is published
 

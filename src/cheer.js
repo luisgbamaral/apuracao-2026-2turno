@@ -1,4 +1,4 @@
-import { CHEER } from './config.js?v=21';
+import { CHEER } from './config.js?v=22';
 
 /**
  * Plays a short excerpt of a song (Spotify embed) whenever one candidate takes the national lead, and stops

@@ -1,4 +1,4 @@
-import { esc } from './views.js?v=21';
+import { esc } from './views.js?v=22';
 
 const pct = (x, digits = 1) => (100 * x).toLocaleString('pt-BR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 // A chance is shown between 1% and 99%: beyond that the model's own uncertainty about itself dominates.

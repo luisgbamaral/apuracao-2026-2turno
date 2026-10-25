@@ -108,7 +108,22 @@ def add_features(snap):
     # Voters with no valid first-round vote (absent, blank or null): the pool the runoff draws new votes from.
     pool = 1 - snap.rate_prior.clip(0, 1)
     snap["base_abst"] = snap.q + group_swing(snap, np.digitize(pool, np.quantile(pool, [1 / 3, 2 / 3])))
+    snap["base_r1w"] = snap.q + first_round_weighted_swing(snap)
     return snap
+
+
+def first_round_weighted_swing(snap):
+    """The page's swing, but each counted municipality weighs by its first-round size (valid votes), not by the
+    votes counted so far: a municipality half counted weighs as much as a fully counted one of the same size."""
+    votes = (snap.lc + snap.rc).to_numpy()
+    seen = votes > 0
+    d = np.where(seen, snap.lc / np.maximum(votes, 1) - snap.q, 0)
+    w = np.where(seen, snap.electorate * snap.rate_prior.clip(0, 1), 0)
+    out = {}
+    for scope, key in (("state", snap.uf.to_numpy()), ("nat", np.full(len(snap), "br"))):
+        g = pd.DataFrame({"k": key, "wd": w * d, "w": w}).groupby("k")[["wd", "w"]].transform("sum")
+        out[scope] = np.where(g.w > 0, g.wd / g.w.where(g.w > 0, 1), 0)
+    return np.where(snap.frac_state >= STATE_SWING_FROM, out["state"], out["nat"])
 
 
 def group_swing(snap, group):
