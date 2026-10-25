@@ -1,13 +1,13 @@
-import { ABROAD, CANDIDATE_COLORS, CHEER, ELECTION, MUNICIPAL_REFRESH_MS, PRESIDENT, REFRESH_MS, STATES, TSE_BASE } from './config.js?v=4';
-import { LivePage } from './live-page.js?v=4';
-import { LeadCheer } from './cheer.js?v=4';
-import { Forecast } from './forecast.js?v=4';
-import { ForecastView } from './forecast-view.js?v=4';
-import { ChoroplethMap } from './map.js?v=4';
-import { MunicipalFeed } from './municipal-feed.js?v=4';
-import { RunoffPalette } from './palette.js?v=4';
-import { TseClient } from './tse.js?v=4';
-import { HeadToHead, StateTable, describeTally, formatInt, renderLegend } from './views.js?v=4';
+import { ABROAD, CANDIDATE_COLORS, CHEER, ELECTION, MUNICIPAL_REFRESH_MS, PRESIDENT, REFRESH_MS, STATES, TSE_BASE } from './config.js?v=5';
+import { LivePage } from './live-page.js?v=5';
+import { LeadCheer } from './cheer.js?v=5';
+import { Forecast } from './forecast.js?v=5';
+import { ForecastView } from './forecast-view.js?v=5';
+import { ChoroplethMap } from './map.js?v=5';
+import { MunicipalFeed } from './municipal-feed.js?v=5';
+import { RunoffPalette } from './palette.js?v=5';
+import { TseClient } from './tse.js?v=5';
+import { HeadToHead, StateTable, describeTally, formatInt, renderLegend } from './views.js?v=5';
 
 const $ = id => document.getElementById(id);
 const AREAS = { ...STATES, ...ABROAD };
@@ -22,7 +22,7 @@ class Dashboard extends LivePage {
     this.table = new StateTable($('state-table'), this.palette);
     this.states = {};
     this.forecastView = new ForecastView($('forecast'), this.palette);
-    this.cheer = new LeadCheer($('cheer'), $('cheer-player'), () => this.client.tally('br'));
+    this.cheer = new LeadCheer($('cheer-player'), $('cheer-hint'), () => this.client.tally('br'));
     this.stateMap = new ChoroplethMap({ svg: $('state-map'), tooltip: $('tooltip') },
       uf => describeTally(STATES[uf], this.states[uf], this.palette));
     this.municipalMap = new ChoroplethMap({ svg: $('municipal-map'), tooltip: $('tooltip') },

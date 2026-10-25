@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Apuração em tempo real do 2º turno presidencial de 2026: Brasil, estados e municípios, direto dos dados do TSE.">
   <title>Apuração 2026 · 2º turno ao vivo</title>
-  <link rel="stylesheet" href="styles.css?v=4">
-  <script type="module" src="src/app.js?v=4"></script>
+  <link rel="stylesheet" href="styles.css?v=5">
+  <script type="module" src="src/app.js?v=5"></script>
 </head>
 <body>
   <header>
@@ -19,8 +19,8 @@
     <p class="sub"></p>
     <div class="duel"></div>
     <div id="tiles" class="tiles"></div>
-    <button id="cheer" class="toggle" type="button"></button>
-    <div id="cheer-player" hidden></div>
+    <p id="cheer-hint" class="sub cheer-hint">♪ Quando Lula passar à frente, toca um trecho de música. O navegador só libera o som depois do primeiro toque ou clique em qualquer lugar desta página.</p>
+    <div id="cheer-player"></div>
   </section>
 
   <section id="forecast" class="card">
@@ -33,6 +33,31 @@
     <h3 class="sub">Chance de vitória ao longo da apuração</h3>
     <svg class="chart" role="img" aria-label="Chance de vitória de cada candidato ao longo da apuração"></svg>
     <p class="note sub"></p>
+    <h3 class="sub">Quanto o modelo acerta quem vence</h3>
+    <div class="scroll">
+      <table class="accuracy">
+        <thead><tr><th>Apurado</th><th class="num">1%</th><th class="num">10%</th><th class="num">30%</th><th class="num">50%</th><th class="num">70%</th><th class="num">80%</th><th class="num">90%</th><th class="num">95%</th></tr></thead>
+        <tbody>
+          <tr><td>Modelo</td><td class="num">67%</td><td class="num">69%</td><td class="num">72%</td><td class="num">75%</td><td class="num">81%</td><td class="num">87%</td><td class="num">91%</td><td class="num">96%</td></tr>
+          <tr><td>Quem está na frente na contagem</td><td class="num">52%</td><td class="num">54%</td><td class="num">55%</td><td class="num">57%</td><td class="num">63%</td><td class="num">67%</td><td class="num">77%</td><td class="num">87%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="sub">Em quantas das 500 eleições simuladas o favorito apontado naquele momento foi quem venceu. Metade delas termina com menos de 2 pontos de
+      diferença, de propósito: com eleição apertada, acertar cedo é quase sorte. Por isso vale olhar pela diferença final:</p>
+    <div class="scroll">
+      <table class="accuracy">
+        <thead><tr><th>Diferença final entre os dois</th><th class="num">5% apurado</th><th class="num">30%</th><th class="num">50%</th><th class="num">70%</th><th class="num">90%</th></tr></thead>
+        <tbody>
+          <tr><td>Mais de 4 pontos (ex.: 52 × 48)</td><td class="num">99%</td><td class="num">100%</td><td class="num">100%</td><td class="num">100%</td><td class="num">100%</td></tr>
+          <tr><td>2 a 4 pontos</td><td class="num">81%</td><td class="num">84%</td><td class="num">90%</td><td class="num">97%</td><td class="num">100%</td></tr>
+          <tr><td>1 a 2 pontos</td><td class="num">61%</td><td class="num">65%</td><td class="num">68%</td><td class="num">79%</td><td class="num">96%</td></tr>
+          <tr><td>Menos de 1 ponto (ex.: 50,4 × 49,6)</td><td class="num">51%</td><td class="num">56%</td><td class="num">60%</td><td class="num">63%</td><td class="num">75%</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="sub">Quando a disputa é muito apertada, o modelo também mostra que não sabe ("sem favorito" ou "leve vantagem") em vez de fingir certeza.
+      Com 99% de chance ou mais, nunca apontou o perdedor nas simulações.</p>
     <details class="method">
       <summary>Como a previsão funciona (metodologia)</summary>
       <ol>
