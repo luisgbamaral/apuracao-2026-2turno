@@ -95,7 +95,7 @@ def scenario(e: Election, rng, target_share, shocks=(1.0, 1.0, 2.0), order=None)
     return left, right, np.exp(log_speed), rank
 
 
-def replay(e: Election, left, right, speed, rank, moments=MOMENTS, correct=None):
+def replay(e: Election, left, right, speed, rank, moments=MOMENTS, correct=None, demo=None):
     """National forecast and the truth at each moment of one counted scenario."""
     units = e.units
     truth = left.sum() / (left.sum() + right.sum())
@@ -111,7 +111,7 @@ def replay(e: Election, left, right, speed, rank, moments=MOMENTS, correct=None)
         f = np.minimum(1, k * speed)
         counted = rank <= f[e.unit_of] + 1e-12
         agg = lambda v: np.bincount(e.unit_of, weights=v * counted, minlength=len(units))
-        snap = units[["unit", "uf", "q", "others", "rate_prior", "electorate"]].copy()
+        snap = units[["unit", "uf", "q", "others", "rate_prior", "electorate"] + list(demo or [])].copy()
         snap["l"], snap["r"] = unit_l, unit_r
         snap["lc"], snap["rc"], snap["ec"] = agg(left), agg(right), agg(e.electorate)
         snap["frac"] = np.bincount(e.unit_of, weights=counted, minlength=len(units)) / units.n

@@ -110,6 +110,8 @@ def design(snap):
     # (q - 0.5) * others is the vote-transfer term: a runoff share is about q * (1 - others) + a * others.
     cols = [np.ones(len(snap)), snap.q - 0.5, snap.others, (snap.q - 0.5) * snap.others, np.log(snap.electorate.clip(lower=1)) - 9]
     cols += [(region == r).astype(float) for r in range(1, 6)]
+    # Electorate profile (education, age, sex), when the snapshot carries it: centred shares.
+    cols += [snap[c] - snap[c].mean() for c in snap.columns if c.startswith("demo_")]
     return np.column_stack(cols)
 
 

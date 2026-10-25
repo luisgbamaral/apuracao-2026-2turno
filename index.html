@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Apuração em tempo real do 2º turno presidencial de 2026: Brasil, estados e municípios, direto dos dados do TSE.">
   <title>Apuração 2026 · 2º turno ao vivo</title>
-  <link rel="stylesheet" href="styles.css?v=5">
-  <script type="module" src="src/app.js?v=5"></script>
+  <link rel="stylesheet" href="styles.css?v=6">
+  <script type="module" src="src/app.js?v=6"></script>
 </head>
 <body>
   <header>
@@ -25,7 +25,7 @@
 
   <section id="forecast" class="card">
     <h2>Previsão do resultado final</h2>
-    <p class="sub">Parte do 1º turno de 2026 e da virada que a apuração vai mostrando. Testado em 500 eleições simuladas a partir dos 2º turnos de 2018 e 2022. Recalculado a cada nova leva de municípios.</p>
+    <p class="sub">Testado em 500 eleições simuladas a partir dos 2º turnos de 2018 e 2022. Recalculado a cada nova leva de municípios.</p>
     <div class="forecast-grid">
       <div class="bet"><span class="sub">A previsão começa quando o TSE totalizar as primeiras seções e os municípios carregarem.</span></div>
       <div class="chances"></div>
@@ -79,10 +79,12 @@
         <li><b>Como ler a chance.</b> "80% de chance" quer dizer que, em 100 noites parecidas com esta, aquele candidato terminaria na frente em
           cerca de 80; o outro venceria em cerca de 20. Não é certeza. A página só diz "definido" quando a vantagem já é maior que todos os
           eleitores que faltam apurar.</li>
-        <li><b>O que testamos e ficou de fora.</b> Quatro modelos de aprendizado de máquina (XGBoost, LightGBM, CatBoost e Random Forest),
-          ajustados automaticamente e validados treinando em uma eleição e testando na outra, não erraram menos que a regra simples acima,
-          então não entraram. Uma regressão da virada pelo perfil dos municípios também foi pior. O Laya, um modelo de linguagem, foi testado
-          à parte, nas mesmas eleições simuladas, e errou bem mais que a regra; também não roda nesta página.</li>
+        <li><b>Que tipo de modelo é.</b> A previsão é um modelo estatístico: os passos 1 a 4 dão o resultado esperado, e uma fórmula de incerteza
+          com seis parâmetros, ajustada nas eleições simuladas do passo 5, dá a chance e a faixa de confiança. Ele venceu uma disputa com outros
+          candidatos: quatro modelos de aprendizado de máquina (XGBoost, LightGBM, CatBoost e Random Forest), ajustados automaticamente e validados
+          treinando em uma eleição e testando na outra, e uma regressão da virada pelo perfil dos municípios, inclusive com escolaridade, idade e sexo do eleitorado (TSE),
+          erraram mais, também quando testada nos 2º turnos reais de 2018 e 2022. O Laya, um modelo de
+          linguagem, foi testado à parte, nas mesmas eleições simuladas, e errou bem mais; ele também não rodaria nesta página.</li>
         <li><b>Limites.</b> Só existem duas eleições reais para servir de molde; se 2026 tiver um padrão nunca visto, o erro real pode ser maior
           que o indicado. O TSE publica a apuração ao vivo por município, não por seção.</li>
       </ol>

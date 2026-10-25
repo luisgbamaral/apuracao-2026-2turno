@@ -1,4 +1,4 @@
-import { esc } from './views.js?v=5';
+import { esc } from './views.js?v=6';
 
 const pct = (x, digits = 1) => (100 * x).toLocaleString('pt-BR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 // A chance is shown between 1% and 99%: beyond that the model's own uncertainty about itself dominates.
@@ -20,7 +20,7 @@ export class ForecastView {
     this.palette = palette;
     this.history = ForecastView.#read();
     this.chart.setAttribute('viewBox', '0 0 640 50');
-    this.chart.innerHTML = '<text x="320" y="28" class="empty">O gráfico começa com a primeira previsão da noite.</text>';
+    this.chart.innerHTML = '<text x="320" y="28" class="empty">O gráfico começa com a primeira previsão.</text>';
   }
 
   /** left/right: the two candidates (left is the one the forecast is written for). */
