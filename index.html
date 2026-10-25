@@ -5,14 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="description" content="Apuração em tempo real do 2º turno presidencial de 2026: Brasil, estados e municípios, direto dos dados do TSE.">
   <title>Apuração 2026 · 2º turno ao vivo</title>
-  <link rel="stylesheet" href="styles.css?v=13">
-  <script type="module" src="src/app.js?v=13"></script>
+  <link rel="stylesheet" href="styles.css?v=15">
+  <script type="module" src="src/app.js?v=15"></script>
 </head>
 <body>
   <header>
     <h1>Apuração 2026 · 2º turno</h1>
     <span id="status" class="sub">Carregando…</span>
   </header>
+  <nav class="tabs" role="tablist">
+    <button type="button" role="tab" data-tab="apuracao" aria-selected="true">Apuração</button>
+    <button type="button" role="tab" data-tab="previsao" aria-selected="false">Previsão</button>
+  </nav>
+  <div id="tab-apuracao" class="tab-panel">
 
   <section id="duel" class="card">
     <h2>Presidente · Brasil</h2>
@@ -47,6 +52,8 @@
     <div class="scroll"><table id="state-table"></table></div>
   </section>
 
+  </div>
+  <div id="tab-previsao" class="tab-panel" hidden>
   <section id="forecast" class="card">
     <h2>Previsão do resultado final</h2>
     <p class="sub">Testado em 500 eleições simuladas a partir dos 2º turnos de 2018 e 2022. Recalculado a cada nova leva de municípios.</p>
@@ -89,13 +96,15 @@
           já mostrou com essa estimativa.</li>
         <li><b>Soma:</b> votos já contados mais a previsão do que falta, em todos os municípios e no exterior, dão o % final previsto.</li>
         <li><b>Confiança:</b> medida em 500 eleições simuladas a partir dos 2º turnos de 2018 e 2022, com a apuração chegando em ordens
-          diferentes. "80% de chance" quer dizer que o candidato venceria em cerca de 80 de 100 noites parecidas. "Definido" só aparece
+          diferentes. "80% de chance" quer dizer que o candidato venceria em cerca de 80 de 100 noites parecidas. Enquanto a faixa de 80% incluir os 50%, a página diz "empate técnico". "Definido" só aparece
           quando a vantagem já é maior que todos os eleitores que faltam apurar.</li>
         <li><b>Teste na vida real:</b> na apuração real de 2022, na ordem em que as urnas chegaram, a contagem mostrou Bolsonaro na frente
           até 68%; este modelo apontou Lula desde o início e, a partir de 2% apurado, ficou sempre a menos de 0,6 ponto do resultado final.</li>
       </ol>
     </details>
   </section>
+
+  </div>
 
   <footer class="sub">
     Fonte: <a href="https://resultados.tse.jus.br">Tribunal Superior Eleitoral</a> (arquivos públicos de divulgação e fotos dos candidatos) ·

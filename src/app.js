@@ -1,13 +1,13 @@
-import { ABROAD, CANDIDATE_COLORS, CHEER, ELECTION, MUNICIPAL_REFRESH_MS, PRESIDENT, REFRESH_MS, STATES, TSE_BASE } from './config.js?v=13';
-import { LivePage } from './live-page.js?v=13';
-import { LeadCheer } from './cheer.js?v=13';
-import { Forecast } from './forecast.js?v=13';
-import { ForecastView } from './forecast-view.js?v=13';
-import { ChoroplethMap } from './map.js?v=13';
-import { MunicipalFeed } from './municipal-feed.js?v=13';
-import { RunoffPalette } from './palette.js?v=13';
-import { Tally, TseClient } from './tse.js?v=13';
-import { HeadToHead, StateTable, describeTally, formatInt, renderLegend } from './views.js?v=13';
+import { ABROAD, CANDIDATE_COLORS, CHEER, ELECTION, MUNICIPAL_REFRESH_MS, PRESIDENT, REFRESH_MS, STATES, TSE_BASE } from './config.js?v=15';
+import { LivePage } from './live-page.js?v=15';
+import { LeadCheer } from './cheer.js?v=15';
+import { Forecast } from './forecast.js?v=15';
+import { ForecastView } from './forecast-view.js?v=15';
+import { ChoroplethMap } from './map.js?v=15';
+import { MunicipalFeed } from './municipal-feed.js?v=15';
+import { RunoffPalette } from './palette.js?v=15';
+import { Tally, TseClient } from './tse.js?v=15';
+import { HeadToHead, StateTable, describeTally, formatInt, renderLegend } from './views.js?v=15';
 
 const $ = id => document.getElementById(id);
 const AREAS = { ...STATES, ...ABROAD };
@@ -118,5 +118,20 @@ class Dashboard extends LivePage {
   }
 }
 
+/** Two tabs, the real count and the forecast; the address keeps the choice (#previsao) so a link opens it. */
+function setupTabs() {
+  const buttons = document.querySelectorAll('.tabs button');
+  const show = name => {
+    for (const b of buttons) {
+      const on = b.dataset.tab === name;
+      b.setAttribute('aria-selected', String(on));
+      $(`tab-${b.dataset.tab}`).hidden = !on;
+    }
+  };
+  for (const b of buttons) b.addEventListener('click', () => { show(b.dataset.tab); history.replaceState(null, '', `#${b.dataset.tab}`); });
+  show(location.hash === '#previsao' ? 'previsao' : 'apuracao');
+}
+
+setupTabs();
 window.dashboard = new Dashboard(); // exposed for inspection from the console
 window.dashboard.start();

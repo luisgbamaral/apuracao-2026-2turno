@@ -1,9 +1,9 @@
-import { esc } from './views.js?v=13';
+import { esc } from './views.js?v=15';
 
 const pct = (x, digits = 1) => (100 * x).toLocaleString('pt-BR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 // A chance is shown between 1% and 99%: beyond that the model's own uncertainty about itself dominates.
 const chanceText = (p, decided) => (decided ? '100%' : p > 0.99 ? 'mais de 99%' : p < 0.01 ? 'menos de 1%' : `${pct(p, 0)}%`);
-const LABELS = [[0.99, 'forte favorito'], [0.95, 'forte favorito'], [0.8, 'favorito'], [0.6, 'leve vantagem']];
+const LABELS = [[0.95, 'forte favorito'], [0, 'favorito']]; // used once the 80% interval no longer includes 50%
 
 /**
  * The forecast as a snapshot (who the model bets on, each candidate's chance and expected final share with
@@ -32,13 +32,16 @@ export class ForecastView {
       { c: right, chance: 1 - result.chance, share: 1 - result.share, low: 1 - result.high, high: 1 - result.low },
     ];
     const favourite = sides[0].chance >= sides[1].chance ? sides[0] : sides[1];
-    const label = LABELS.find(([from]) => favourite.chance >= from)?.[1];
+    const label = LABELS.find(([from]) => favourite.chance >= from)[1];
     const color = `style="color:${this.palette.colorOf(favourite.c)}"`;
+    // A technical tie, as polls call it: the 80% interval of the final share still includes 50%.
+    const tie = result.low < 0.5 && result.high > 0.5;
     this.bet.innerHTML = result.decided
       ? `<span class="sub">Definido pela apuração</span><b ${color}>${esc(favourite.c.name)} vence</b>` +
         '<span class="sub">a vantagem já é maior que todos os eleitores que faltam apurar</span>'
-      : !label
-        ? '<b>Empate técnico</b><span class="sub">nenhum dos dois passa de 60% de chance</span>'
+      : tie
+        ? `<b>Empate técnico</b><span class="sub">a faixa de 80% ainda inclui os 50%; <b ${color}>${esc(favourite.c.name)}</b> está um pouco à frente, ` +
+          `com ${chanceText(favourite.chance)} de chance de vencer</span>`
         : `<span class="sub">Aposta do modelo: ${label}</span><b ${color}>${esc(favourite.c.name)}</b>` +
           `<span class="sub">com ${chanceText(favourite.chance)} de chance de vencer</span>`;
     this.rows.innerHTML = sides.map(s => `
@@ -55,7 +58,8 @@ export class ForecastView {
 
   #remember(result) {
     const last = this.history.at(-1);
-    if (last && last.counted === result.counted && Math.abs(last.share - result.share) < 1e-6) return;
+    const same = last && last.counted === result.counted && Math.abs(last.share - result.share) < 1e-6;
+    if (same && Date.now() - last.at < 55_000) return; // at most one unchanged point a minute
     this.history.push({ at: Date.now(), counted: result.counted, share: result.share, chance: result.chance });
     this.history = this.history.slice(-2000);
     try {
@@ -67,10 +71,7 @@ export class ForecastView {
   #drawChart(left, right) {
     const [w, h, padL, padB, padT] = [640, 220, 34, 22, 8];
     const points = this.history;
-    if (points.length < 2) {
-      this.chart.innerHTML = `<text x="${w / 2}" y="${h / 2}" class="empty">A série aparece a partir da segunda previsão.</text>`;
-      return;
-    }
+    if (!points.length) return;
     const t0 = points[0].at;
     const span = Math.max(points.at(-1).at - t0, 60_000);
     const x = at => padL + ((at - t0) / span) * (w - padL - 8);
@@ -84,8 +85,11 @@ export class ForecastView {
     const ticks = [0, 0.5, 1].map(f => t0 + f * span)
       .map(at => `<text x="${x(at)}" y="${h - 6}" class="axis" text-anchor="middle">${hour(at)}</text>`).join('');
     this.chart.setAttribute('viewBox', `0 0 ${w} ${h}`);
+    const now = points.at(-1);
+    const dot = (value, color) => `<circle cx="${x(now.at).toFixed(1)}" cy="${y(value).toFixed(1)}" r="4" fill="${color}"/>`;
     this.chart.innerHTML = grid + ticks +
-      line(p => 1 - p.chance, this.palette.colorOf(right)) + line(p => p.chance, this.palette.colorOf(left));
+      line(p => 1 - p.chance, this.palette.colorOf(right)) + line(p => p.chance, this.palette.colorOf(left)) +
+      dot(1 - now.chance, this.palette.colorOf(right)) + dot(now.chance, this.palette.colorOf(left));
   }
 
   static #read() {

@@ -1,4 +1,4 @@
-import { CANDIDATE_COLORS } from './config.js?v=13';
+import { CANDIDATE_COLORS } from './config.js?v=15';
 
 /**
  * Colours of the runoff maps: the hue says who leads an area, the shade how wide the lead is.
