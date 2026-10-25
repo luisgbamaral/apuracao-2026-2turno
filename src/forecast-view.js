@@ -1,5 +1,5 @@
-import { HISTORY_URL } from './config.js?v=24';
-import { esc } from './views.js?v=24';
+import { CHEER, HISTORY_URL } from './config.js?v=25';
+import { esc } from './views.js?v=25';
 
 const pct = (x, digits = 1) => (100 * x).toLocaleString('pt-BR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 // A chance is shown between 1% and 99%: beyond that the model's own uncertainty about itself dominates.
@@ -32,9 +32,12 @@ export class ForecastView {
   }
 
   /** left/right: the two candidates (left is the one the forecast is written for). */
-  render(result, left, right) {
+  render(result, left, right, own = true) {
     if (!result) return;
-    this.#remember(result);
+    if (own) {
+      this.own = true;
+      this.#remember(result);
+    }
     this.candidates = [left, right];
     const sides = [
       { c: left, chance: result.chance, share: result.share, low: result.low, high: result.high },
@@ -96,7 +99,16 @@ export class ForecastView {
       const response = await fetch(HISTORY_URL, { cache: 'no-cache' });
       if (response.ok) this.shared = await response.json();
     } catch { /* keep the last series read */ }
-    if (this.candidates) this.#drawChart(...this.candidates);
+    if (this.candidates) this.showLatest(...this.candidates);
+    else this.#drawChart({ number: CHEER.candidate }, { number: CHEER.rival }); // names not loaded yet: colours are enough
+  }
+
+  /** Until this page computes its own forecast, the latest published one is shown, with the chart. */
+  showLatest(left, right) {
+    this.candidates ??= [left, right];
+    const last = this.shared.at(-1);
+    if (!this.own && last?.high) this.render({ ...last, decided: 0 }, ...this.candidates, false);
+    else this.#drawChart(...this.candidates);
   }
 
   get #points() {

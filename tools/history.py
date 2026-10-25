@@ -76,7 +76,7 @@ def main():
             last = history[-1] if history else None
             same = last and last["counted"] == f["counted"] and abs(last["share"] - f["share"]) < 1e-6
             if not (same and time.time() * 1000 - last["at"] < 55_000):
-                history.append({"at": int(time.time() * 1000), "counted": f["counted"], "share": f["share"], "chance": f["chance"]})
+                history.append({"at": int(time.time() * 1000), **{k: f[k] for k in ("counted", "share", "low", "high", "chance")}})
                 OUT.write_text(json.dumps(history, separators=(",", ":")), encoding="utf-8")
                 print(time.strftime("%H:%M:%S"), f"{100 * f['counted']:.2f}% apurado, Lula {100 * f['share']:.2f}%, chance {100 * f['chance']:.0f}%", flush=True)
         if time.time() - pushed >= PUSH_EVERY and subprocess.run(["git", "-C", str(WORKTREE), "diff", "--quiet"]).returncode:

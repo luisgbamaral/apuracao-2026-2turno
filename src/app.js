@@ -1,13 +1,13 @@
-import { ABROAD, CANDIDATE_COLORS, CHEER, ELECTION, HISTORY_REFRESH_MS, MUNICIPAL_REFRESH_MS, PRESIDENT, REFRESH_MS, STATES, TSE_BASE } from './config.js?v=24';
-import { LivePage } from './live-page.js?v=24';
-import { LeadCheer } from './cheer.js?v=24';
-import { Forecast } from './forecast.js?v=24';
-import { ForecastView } from './forecast-view.js?v=24';
-import { ChoroplethMap } from './map.js?v=24';
-import { MunicipalFeed } from './municipal-feed.js?v=24';
-import { RunoffPalette } from './palette.js?v=24';
-import { Tally, TseClient } from './tse.js?v=24';
-import { HeadToHead, StateTable, describeTally, formatInt, renderLegend } from './views.js?v=24';
+import { ABROAD, CANDIDATE_COLORS, CHEER, ELECTION, HISTORY_REFRESH_MS, MUNICIPAL_REFRESH_MS, PRESIDENT, REFRESH_MS, STATES, TSE_BASE } from './config.js?v=25';
+import { LivePage } from './live-page.js?v=25';
+import { LeadCheer } from './cheer.js?v=25';
+import { Forecast } from './forecast.js?v=25';
+import { ForecastView } from './forecast-view.js?v=25';
+import { ChoroplethMap } from './map.js?v=25';
+import { MunicipalFeed } from './municipal-feed.js?v=25';
+import { RunoffPalette } from './palette.js?v=25';
+import { Tally, TseClient } from './tse.js?v=25';
+import { HeadToHead, StateTable, describeTally, formatInt, renderLegend } from './views.js?v=25';
 
 const $ = id => document.getElementById(id);
 const AREAS = { ...STATES, ...ABROAD };
@@ -30,6 +30,7 @@ class Dashboard extends LivePage {
   }
 
   async start() {
+    this.forecastView.loadShared(); // the night's series first: it does not wait for the maps or the TSE
     const [stateShapes, municipalShapes, forecast] = await Promise.all([
       this.stateMap.load('data/states.json', { idOf: s => s.uf, labelOf: s => s.uf.toUpperCase() }),
       this.municipalMap.load('data/municipalities.json', { idOf: s => s.tse }),
@@ -45,7 +46,6 @@ class Dashboard extends LivePage {
     this.#setupZoom(stateShapes);
     await super.start();
     setInterval(() => this.#refreshMunicipalities(), MUNICIPAL_REFRESH_MS);
-    this.forecastView.loadShared();
     setInterval(() => this.forecastView.loadShared(), HISTORY_REFRESH_MS);
   }
 
@@ -80,6 +80,7 @@ class Dashboard extends LivePage {
       [`${national.abstentionPct}%`, 'abstenção'],
     ].map(([value, label]) => `<div class="tile"><b>${value}</b><span>${label}</span></div>`).join('');
     const runoff = national.candidates.filter(c => c.number in CANDIDATE_COLORS);
+    this.forecastView.showLatest(...[CHEER.candidate, CHEER.rival].map(n => national.candidates.find(c => c.number === n)));
     this.duel.render(national, runoff);
     this.cheer.update(national);
     for (const legend of document.querySelectorAll('.legend')) renderLegend(legend, this.palette.legend(runoff));
