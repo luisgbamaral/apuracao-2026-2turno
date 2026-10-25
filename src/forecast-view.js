@@ -1,9 +1,10 @@
-import { ABROAD, STATES } from './config.js?v=18';
-import { esc } from './views.js?v=18';
+import { esc } from './views.js?v=19';
 
 const pct = (x, digits = 1) => (100 * x).toLocaleString('pt-BR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 // A chance is shown between 1% and 99%: beyond that the model's own uncertainty about itself dominates.
 const chanceText = (p, decided) => (decided ? '100%' : p > 0.99 ? 'mais de 99%' : p < 0.01 ? 'menos de 1%' : `${pct(p, 0)}%`);
+// First accuracy table on the page: share counted -> % of simulated elections the favourite won.
+const HITS = [[0.01, 67], [0.1, 69], [0.3, 72], [0.5, 75], [0.7, 81], [0.8, 87], [0.9, 91], [0.95, 96]];
 const LABELS = [[0.95, 'forte favorito'], [0, 'favorito']]; // used once the 80% interval no longer includes 50%
 
 /**
@@ -58,18 +59,14 @@ export class ForecastView {
     this.#drawChart(left, right);
   }
 
-  /** How much to trust the forecast at this point of the night, in words, from where the counted votes come from. */
-  static #caveat({ counted, where, decided }) {
-    if (decided || counted >= 0.3) return '';
-    const name = uf => ({ ...STATES, ...ABROAD })[uf] ?? uf.toUpperCase();
-    if (counted < 0.05) {
-      const top = where.slice(0, 3).map(w => `${name(w.uf)} (${pct(w.share, 0)}%)`).join(', ');
-      const done = counted < 0.001 ? 'menos de 0,1%' : `só ${pct(counted)}%`;
-      return `<span class="sub caveat"><b>Ainda é cedo:</b> ${done} do eleitorado foi apurado. Dos votos que já chegaram, a maior parte vem de ${top || 'poucos lugares'}. ` +
-        'A previsão aplica ao país a virada vista nesses lugares e vai mudar bastante quando outros estados chegarem. ' +
-        'Nos testes, com cerca de 1% apurado, o favorito do modelo venceu em 2 de cada 3 eleições.</span>';
-    }
-    return `<span class="sub caveat">${where.length} estados já têm votos apurados; a previsão ainda pode mudar bastante.</span>`;
+  /** How often the model's favourite won in the simulations at this share counted (the page's accuracy table). */
+  static #caveat({ counted, decided }) {
+    if (decided) return '';
+    const [at, hit] = HITS.findLast(([m]) => m <= counted) ?? HITS[0];
+    const done = counted < 0.001 ? 'menos de 0,1%' : `${pct(counted)}%`;
+    return `<span class="sub caveat"><b>Quanto confiar agora:</b> com ${done} apurado, ainda é cedo. ` +
+      `Nas 500 eleições simuladas, com ${pct(at, 0)}% apurado, o favorito do modelo venceu em ${hit}% delas ` +
+      '(metade foi decidida por menos de 2 pontos).</span>';
   }
 
   #remember(result) {

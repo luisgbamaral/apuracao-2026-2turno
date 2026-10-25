@@ -89,10 +89,7 @@ export class Forecast {
     const uncounted = sum(rows.map(r => Math.max(r.electorate - r.ec, 0)));
     const decided = Math.abs(lead) > uncounted ? Math.sign(lead) : 0;
     const chance = decided ? (decided > 0 ? 1 : 0) : t5((share - 0.5) / sd);
-    // Where the counted votes come from, biggest first: early on, the forecast leans on these places.
-    const where = [...scopes.state.entries()].filter(([, s]) => s.ec > 0).sort((a, b) => b[1].ec - a[1].ec)
-      .map(([uf, s]) => ({ uf, share: s.ec / nat.ec }));
-    return { share, low: share - T80 * sd, high: share + T80 * sd, chance, decided, counted: nat.ec / nat.e, sd, where };
+    return { share, low: share - T80 * sd, high: share + T80 * sd, chance, decided, counted: nat.ec / nat.e, sd };
   }
 
   /** Uncertainty of the national share, with floors that keep the start of the night humble. */
