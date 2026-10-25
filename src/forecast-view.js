@@ -1,4 +1,5 @@
-import { esc } from './views.js?v=22';
+import { HISTORY_URL } from './config.js?v=23';
+import { esc } from './views.js?v=23';
 
 const pct = (x, digits = 1) => (100 * x).toLocaleString('pt-BR', { minimumFractionDigits: digits, maximumFractionDigits: digits });
 // A chance is shown between 1% and 99%: beyond that the model's own uncertainty about itself dominates.
@@ -21,6 +22,7 @@ export class ForecastView {
     this.note = card.querySelector('.note');
     this.palette = palette;
     this.history = ForecastView.#read();
+    this.shared = []; // the published series, the same for every visitor
     this.chart.setAttribute('viewBox', '0 0 640 50');
     this.chart.innerHTML = '<text x="320" y="28" class="empty">O gráfico começa com a primeira previsão.</text>';
   }
@@ -29,6 +31,7 @@ export class ForecastView {
   render(result, left, right) {
     if (!result) return;
     this.#remember(result);
+    this.candidates = [left, right];
     const sides = [
       { c: left, chance: result.chance, share: result.share, low: result.low, high: result.high },
       { c: right, chance: 1 - result.chance, share: 1 - result.share, low: 1 - result.high, high: 1 - result.low },
@@ -55,7 +58,7 @@ export class ForecastView {
         <div class="meter"><span style="width:${100 * s.chance}%"></span></div>
       </div>`).join('');
     this.note.textContent = `Previsão com ${pct(result.counted)}% do eleitorado nas seções totalizadas. ` +
-      'A série começa quando esta página foi aberta neste navegador.';
+      'O gráfico mostra a noite inteira, o mesmo para todos os visitantes.';
     this.#drawChart(left, right);
   }
 
@@ -81,10 +84,25 @@ export class ForecastView {
     } catch { /* storage blocked: the series lasts for this visit */ }
   }
 
+  /** Reads the published series; it lags a few minutes, so this browser's own points fill both ends. */
+  async loadShared() {
+    try {
+      const response = await fetch(HISTORY_URL, { cache: 'no-cache' });
+      if (response.ok) this.shared = await response.json();
+    } catch { /* keep the last series read */ }
+    if (this.candidates) this.#drawChart(...this.candidates);
+  }
+
+  get #points() {
+    if (!this.shared.length) return this.history;
+    const [first, last] = [this.shared[0].at, this.shared.at(-1).at];
+    return [...this.history.filter(p => p.at < first), ...this.shared, ...this.history.filter(p => p.at > last)];
+  }
+
   /** Chance of each candidate over the night: one line each, with the 50% line. */
   #drawChart(left, right) {
     const [w, h, padL, padB, padT] = [640, 220, 34, 22, 8];
-    const points = this.history;
+    const points = this.#points;
     if (!points.length) return;
     const t0 = points[0].at;
     const span = Math.max(points.at(-1).at - t0, 60_000);
